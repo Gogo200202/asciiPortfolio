@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { play } from "ascii-magic-art/runtime/player.js";
 import { CELL_W, cellAspect } from "ascii-magic-art/runtime/canvas.js";
+import { dot } from "ascii-magic-art/lib/kit";
 
 function AsciiBackground({ piece }) {
   const ref = useRef(null);
@@ -21,8 +22,9 @@ function AsciiBackground({ piece }) {
     };
 
     fit();
-    const stop = play(pre, piece);
-
+    const stop = play(ref.current, piece, {
+      look: { look: "squares", gamma: 1 },
+    });
     const canvas = pre._canvas;
     if (canvas) {
       canvas.style.maxWidth = "none";
@@ -42,7 +44,13 @@ function AsciiBackground({ piece }) {
   }, [piece]);
 
   return (
-    <div style={{ position: "fixed", inset: 0, overflow: "hidden" }}>
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        overflow: "hidden",
+      }}
+    >
       <pre ref={ref} aria-hidden="true" style={{ margin: 0 }} />
     </div>
   );
