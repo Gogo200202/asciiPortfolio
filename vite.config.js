@@ -4,6 +4,7 @@ import { defineConfig } from 'vite'
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: process.env.BASE_PATH || "/asciiPortfolio/",
   plugins: [
     react(),
     babel({ presets: [reactCompilerPreset()] })

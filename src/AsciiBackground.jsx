@@ -1,58 +1,40 @@
 import { useEffect, useRef } from "react";
+import Box from "@mui/material/Box";
 import { play } from "ascii-magic-art/runtime/player.js";
-import { CELL_W, cellAspect } from "ascii-magic-art/runtime/canvas.js";
-import { dot } from "ascii-magic-art/lib/kit";
+import * as piece from "ascii-magic-art/pieces/harbour-neon-skyline.js";
 
-function AsciiBackground({ piece }) {
+function AsciiBackground() {
   const ref = useRef(null);
 
-  useEffect(() => {
-    const pre = ref.current;
-    if (!pre) return;
-
-    const { cols, rows } = piece.meta;
-    const aspect = cellAspect(piece.meta);
-
-    const fit = () => {
-      const px = Math.max(
-        window.innerWidth / (cols * CELL_W),
-        window.innerHeight / (rows * CELL_W * aspect),
-      );
-      pre.style.fontSize = `${px}px`;
-    };
-
-    fit();
-    const stop = play(ref.current, piece, {
-      look: { look: "squares", gamma: 1 },
-    });
-    const canvas = pre._canvas;
-    if (canvas) {
-      canvas.style.maxWidth = "none";
-      canvas.style.position = "absolute";
-      canvas.style.top = "50%";
-      canvas.style.left = "50%";
-      canvas.style.transform = "translate(-50%, -50%)";
-    }
-
-    window.addEventListener("resize", fit);
-    return () => {
-      window.removeEventListener("resize", fit);
-      stop();
-      canvas?.remove();
-      delete pre._canvas;
-    };
-  }, [piece]);
+  useEffect(
+    () => play(ref.current, piece, { look: { look: "squares", gamma: 2 } }),
+    [],
+  );
 
   return (
-    <div
-      style={{
+    <Box
+      sx={{
         position: "fixed",
-        inset: 0,
+        inset: "0 0 20px 0",
         overflow: "hidden",
+        "& canvas": {
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: "100% !important",
+          height: "100% !important",
+          maxWidth: "none !important",
+          objectFit: "cover",
+        },
       }}
     >
-      <pre ref={ref} aria-hidden="true" style={{ margin: 0 }} />
-    </div>
+      <Box
+        component="pre"
+        ref={ref}
+        aria-hidden="true"
+        sx={{ m: 0, fontSize: "1vw" }}
+      />
+    </Box>
   );
 }
 
