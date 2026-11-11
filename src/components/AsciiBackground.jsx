@@ -14,11 +14,10 @@ function AsciiBackground() {
   return (
     <Box
       sx={{
-        position: "fixed",
-        inset: "0 0 20px 0",
+        inset: "10vh 0 20px 0",
         overflow: "hidden",
+
         "& canvas": {
-          position: "absolute",
           top: 0,
           left: 0,
           width: "100% !important",

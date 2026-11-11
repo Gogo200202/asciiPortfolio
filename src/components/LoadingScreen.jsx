@@ -10,7 +10,7 @@ function LoadingScreen() {
     () =>
       play(ref.current, piece, {
         look: { look: "squares", gamma: 1.15 },
-        speed: 5,
+        speed: 8,
       }),
     [],
   );
