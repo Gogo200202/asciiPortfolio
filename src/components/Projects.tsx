@@ -3,6 +3,9 @@ import Grid from "@mui/material/Grid";
 import Link from "@mui/material/Link";
 import Typography from "@mui/material/Typography";
 
+import Header from "./Header";
+import MyInAscii from "./MyInAscii";
+
 export interface Project {
   title: string;
   description: string;
@@ -69,6 +72,48 @@ function Projects({ projects }: { projects: Project[] }) {
         mx: "auto",
       }}
     >
+      <Box
+        component="section"
+        aria-labelledby="home-heading"
+        sx={{
+          display: "grid",
+          gridTemplateColumns: {
+            xs: "minmax(0, 1fr)",
+            md: "minmax(0, 1.2fr) minmax(0, 0.8fr)",
+          },
+          alignItems: "center",
+          columnGap: { md: 6 },
+          rowGap: { xs: 5, md: 4 },
+          mb: { xs: 8, md: 10 },
+        }}
+      >
+        <Box sx={{ order: 1, minWidth: 0 }}>
+          <Header />
+        </Box>
+
+        <Box
+          sx={{
+            order: 2,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: { xs: "center", md: "flex-end" },
+            gap: { xs: 2, md: 2.5 },
+            minWidth: 0,
+          }}
+        >
+          <Typography
+            component="p"
+            variant="overline"
+            sx={{ fontFamily: "var(--font-mono)", color: "text.secondary" }}
+          >
+            me
+          </Typography>
+          <Box sx={{ width: "100%", maxWidth: { xs: 400, md: 440 } }}>
+            <MyInAscii />
+          </Box>
+        </Box>
+      </Box>
+
       <Grid container spacing={4}>
         {projects.map((project) => (
           <Grid key={project.title} size={{ xs: 12, sm: 6, md: 4 }}>
