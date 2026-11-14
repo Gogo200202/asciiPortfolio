@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import AsciiBackground from "./components/AsciiBackground.jsx";
+import ContourBackdrop from "./components/ContourBackdrop.jsx";
 import Header from "./components/Header.jsx";
 import LoadingScreen from "./components/LoadingScreen.jsx";
 import Projects from "./components/Projects.jsx";
@@ -68,9 +68,11 @@ function App() {
     <LoadingScreen />
   ) : (
     <>
-      <Header />
-      <AsciiBackground />
-      <Projects projects={projects} />
+      <ContourBackdrop />
+      <div className="relative z-10">
+        <Header />
+        <Projects projects={projects} />
+      </div>
     </>
   );
 }

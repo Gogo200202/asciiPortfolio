@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import type { ReactNode } from "react";
 import Box from "@mui/material/Box";
 import { play } from "ascii-magic-art/runtime/player.js";
 import * as piece from "ascii-magic-art/pieces/double-line-frame.js";
@@ -18,7 +19,7 @@ function FrameStrip() {
   );
 }
 
-function AsciiFrame({ children }) {
+function AsciiFrame({ children }: { children: ReactNode }) {
   return (
     <Box
       sx={{

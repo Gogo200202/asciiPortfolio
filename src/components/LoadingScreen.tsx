@@ -17,12 +17,15 @@ function LoadingScreen() {
 
   return (
     <Box
+      className="dark"
       sx={{
         position: "fixed",
         inset: 0,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
+        bgcolor: "#000000",
+        zIndex: 50,
         "& canvas": {
           width: "60% !important",
           height: "auto !important",
