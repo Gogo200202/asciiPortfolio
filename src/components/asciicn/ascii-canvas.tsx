@@ -58,6 +58,10 @@ export interface AsciiCanvasProps
   cell?: number;
   /** Simulation speed multiplier. Default 1. */
   speed?: number;
+  /** Frame rate cap. Default 60. */
+  fps?: number;
+  /** Cap the canvas pixel ratio; see `AsciiGrid`. Default the device's. */
+  dpr?: number;
   /** `false` freezes fading, spreading and the idle brush; painting still works. Default `true`. */
   animate?: boolean;
   /** Filled with a handle for export. */
@@ -523,6 +527,8 @@ export const AsciiCanvas = ({
   background = "paper",
   cell = 12,
   speed = 1,
+  fps = 60,
+  dpr,
   animate = true,
   handle,
   className,
@@ -839,11 +845,12 @@ export const AsciiCanvas = ({
       <AsciiGrid
         draw={draw}
         cell={cell}
+        dpr={dpr}
         paper={background === "transparent" ? "transparent" : "--ascii-paper"}
         colored
         speed={speed}
         animate={moving}
-        fps={60}
+        fps={fps}
         handle={handle}
         className="absolute inset-0"
       />

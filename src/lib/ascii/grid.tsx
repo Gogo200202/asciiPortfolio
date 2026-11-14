@@ -68,6 +68,12 @@ export interface AsciiGridProps extends Omit<
   animate?: boolean;
   /** Frame rate cap. Default 30. */
   fps?: number;
+  /**
+   * Cap the canvas backing-store pixel ratio. Default the device's, so
+   * glyphs stay sharp. Lower it for large decorative grids: the canvas is
+   * upscaled by the browser, trading a little softness for frame rate.
+   */
+  dpr?: number;
   /** The moment drawn when motion is off or reduced, in seconds. Default 0. */
   stillTime?: number;
   /** Track the pointer for `context.pointer`. Default `false`. */
@@ -103,6 +109,7 @@ export const AsciiGrid = ({
   speed = 1,
   animate = true,
   fps = 30,
+  dpr,
   stillTime = 0,
   interactive = false,
   fallback,
@@ -207,6 +214,11 @@ export const AsciiGrid = ({
     const resize = () => {
       const metrics = measureCell({
         cell: cell ?? readCell(root),
+        // Never above the device's own ratio; the cap only lowers it.
+        dpr:
+          dpr === undefined
+            ? undefined
+            : Math.min(dpr, window.devicePixelRatio || 1),
         font: readFont(root),
         square,
       });
@@ -261,7 +273,7 @@ export const AsciiGrid = ({
       canvasRef.current = null;
       setHasFrame(false);
     };
-  }, [cell, square, ink, paper]);
+  }, [cell, square, ink, paper, dpr]);
 
   // Pointer, in cell units.
   useEffect(() => {
