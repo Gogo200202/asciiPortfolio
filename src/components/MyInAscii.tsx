@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { AsciiReveal } from "@/components/asciicn/ascii-reveal";
+import { rippleBackground } from "@/lib/background-ripple";
 import { usePrefersReducedMotion } from "@/lib/ascii";
 
 // How long each end of the loop holds before the sweep turns around.
@@ -29,9 +30,11 @@ const PORTRAIT_RATIO = 1080 / 1030;
  */
 export function MyInAscii() {
   const reducedMotion = usePrefersReducedMotion();
+  const rootRef = useRef<HTMLDivElement>(null);
   // Odd steps show the photo. Step 0 is the first, glyphs-only hold.
   const [step, setStep] = useState(0);
   const revealed = step % 2 === 1;
+  const wasRevealed = useRef(revealed);
 
   useEffect(() => {
     if (reducedMotion) {
@@ -44,8 +47,31 @@ export function MyInAscii() {
     return () => window.clearTimeout(timer);
   }, [reducedMotion, step, revealed]);
 
+  // Splash the backdrop when the portrait starts turning back into glyphs,
+  // the same ripple a click on the background sends.
+  useEffect(() => {
+    const was = wasRevealed.current;
+    wasRevealed.current = revealed;
+    if (!was || revealed) {
+      return;
+    }
+    const box = rootRef.current?.getBoundingClientRect();
+    if (!box) {
+      return;
+    }
+    const x = box.left + box.width / 2;
+    const y = box.top + box.height / 2;
+    if (x < 0 || x > window.innerWidth || y < 0 || y > window.innerHeight) {
+      return;
+    }
+    rippleBackground(x, y);
+  }, [revealed]);
+
   return (
-    <div className="flex w-full flex-col items-center gap-3">
+    <div
+      ref={rootRef}
+      className="flex w-full flex-col items-center gap-3"
+    >
       <AsciiReveal
         src={PORTRAIT}
         alt="Georgi Angelov, drawn in ASCII and then revealed as a photo."

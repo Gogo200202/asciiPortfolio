@@ -62,29 +62,24 @@ function ProjectCard({ project }: { project: Project }) {
 
 function Projects({ projects }: { projects: Project[] }) {
   return (
-    <Box
-      component="main"
-      sx={{
-        pt: "14vh",
-        px: 2,
-        pb: 8,
-        maxWidth: "lg",
-        mx: "auto",
-      }}
-    >
+    <Box component="main" sx={{ pb: 8 }}>
       <Box
         component="section"
         aria-labelledby="home-heading"
         sx={{
+          minHeight: "100svh",
+          width: "100%",
+          maxWidth: "lg",
+          mx: "auto",
+          px: 2,
           display: "grid",
           gridTemplateColumns: {
             xs: "minmax(0, 1fr)",
             md: "minmax(0, 1.2fr) minmax(0, 0.8fr)",
           },
           alignItems: "center",
-          columnGap: { md: 6 },
+          columnGap: { md: 3, lg: 4 },
           rowGap: { xs: 5, md: 4 },
-          mb: { xs: 8, md: 10 },
         }}
       >
         <Box sx={{ order: 1, minWidth: 0 }}>
@@ -114,13 +109,22 @@ function Projects({ projects }: { projects: Project[] }) {
         </Box>
       </Box>
 
-      <Grid container spacing={4}>
-        {projects.map((project) => (
-          <Grid key={project.title} size={{ xs: 12, sm: 6, md: 4 }}>
-            <ProjectCard project={project} />
-          </Grid>
-        ))}
-      </Grid>
+      <Box
+        sx={{
+          px: 2,
+          pt: { xs: 8, md: 10 },
+          maxWidth: "lg",
+          mx: "auto",
+        }}
+      >
+        <Grid container spacing={4}>
+          {projects.map((project) => (
+            <Grid key={project.title} size={{ xs: 12, sm: 6, md: 4 }}>
+              <ProjectCard project={project} />
+            </Grid>
+          ))}
+        </Grid>
+      </Box>
     </Box>
   );
 }

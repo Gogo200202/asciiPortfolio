@@ -2,12 +2,13 @@ import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 
 import { Ascii } from "ascii.rest/react";
-import { scramble } from "ascii.rest/pieces";
+
+import * as scramble from "@/lib/scramble";
 
 // The scramble piece is 44 columns wide with its phrase centred. The box
 // below shows the middle 25 columns, so the phrase is as large as the left
 // column allows instead of being squeezed by the empty padding.
-const HEADER_FONT = "clamp(1.25rem, 4vw, 3rem)";
+const HEADER_FONT = "clamp(1.25rem, 3.9vw, 3rem)";
 
 function Header() {
   return (
@@ -56,6 +57,8 @@ function Header() {
               "I hope you like it",
               "See you on the flip side",
             ],
+            // A longer pause between phrases than the stock 1.9s.
+            hold: 3.2,
           }}
         />
       </Box>

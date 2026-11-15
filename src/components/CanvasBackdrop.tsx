@@ -3,6 +3,8 @@
 import { useEffect, useRef } from "react";
 
 import { AsciiCanvas } from "@/components/asciicn/ascii-canvas";
+import { BACKGROUND_RIPPLE_EVENT } from "@/lib/background-ripple";
+import type { BackgroundRippleDetail } from "@/lib/background-ripple";
 
 /**
  * The asciicn glyph pad used as the page backdrop.
@@ -106,17 +108,29 @@ export function CanvasBackdrop() {
       send("pointerup", -1, -1, 0);
     };
 
+    // Content (the portrait reveal) can splash the backdrop as if clicked.
+    const onBackdropRipple = (event: Event) => {
+      const { detail } = event as CustomEvent<BackgroundRippleDetail>;
+      if (!detail || !Number.isFinite(detail.x) || !Number.isFinite(detail.y)) {
+        return;
+      }
+      send("pointerdown", detail.x, detail.y, 1);
+      send("pointerup", detail.x, detail.y, 0);
+    };
+
     window.addEventListener("pointermove", onMove, { passive: true });
     window.addEventListener("pointerdown", onDown, { passive: true });
     window.addEventListener("pointerup", onUp, { passive: true });
     window.addEventListener("pointercancel", release, { passive: true });
     window.addEventListener("blur", release);
+    window.addEventListener(BACKGROUND_RIPPLE_EVENT, onBackdropRipple);
     return () => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerdown", onDown);
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", release);
       window.removeEventListener("blur", release);
+      window.removeEventListener(BACKGROUND_RIPPLE_EVENT, onBackdropRipple);
       if (frame !== 0) {
         cancelAnimationFrame(frame);
       }
