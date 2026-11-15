@@ -7,51 +7,54 @@ const LOAD_TIME = 1000;
 
 const projects = [
   {
-    title: "ascii-weather",
+    title: "catedra-university",
     description:
-      "Terminal weather app that renders the forecast as animated ASCII art.",
-    image: "https://picsum.photos/seed/weather/480/300?grayscale",
-    tags: ["Node.js", "React", "APIs"],
-    link: "https://github.com/Gogo200202",
+      "University department site with a role-aware React front end and an Express/MongoDB API for paginated news and student, teacher and admin accounts.",
+    image: `${import.meta.env.BASE_URL}img/projects/catedra.jpg`,
+    tags: ["React 19", "TypeScript", "Express", "MongoDB"],
+    link: "https://github.com/Gogo200202/Catedra-University-front-end",
   },
   {
-    title: "devshell",
+    title: "e-commerce-front-end",
     description:
-      "A dotfiles-driven shell setup with a boot menu, themes and prompt.",
-    image: "https://picsum.photos/seed/devshell/480/300?grayscale",
-    tags: ["Bash", "Zsh", "Tmux"],
-    link: "https://github.com/Gogo200202",
+      "Next.js storefront with product pages, search, likes and auth, backed by an Express 5 / MongoDB API with JWT sessions and image uploads.",
+    image: `${import.meta.env.BASE_URL}img/projects/marketplace.jpg`,
+    tags: ["Next.js 15", "React 19", "Tailwind", "MongoDB"],
+    link: "https://github.com/Gogo200202/e-commerce-front-end",
   },
   {
-    title: "pixel-notes",
+    title: "product-sell-store",
     description:
-      "Markdown note taker that turns sketches into pixel art thumbnails.",
-    image: "https://picsum.photos/seed/pixelnotes/480/300?grayscale",
-    tags: ["TypeScript", "Canvas"],
-    link: "https://github.com/Gogo200202",
+      "ASP.NET Core MVC marketplace with Identity roles, EF Core migrations and an NUnit + Moq test suite.",
+    image: `${import.meta.env.BASE_URL}img/projects/product-sell-store.jpg`,
+    tags: ["C#", ".NET 6", "EF Core", "NUnit"],
+    link: "https://github.com/Gogo200202/ProductSellStore",
   },
   {
-    title: "wireframe-blog",
+    title: "video-editor",
     description:
-      "Static blog generator that ships every post with a wireframe header.",
-    image: "https://picsum.photos/seed/wireframe/480/300?grayscale",
-    tags: ["Rust", "SSG"],
-    link: "https://github.com/Gogo200202",
+      "Browser video trimmer that loads FFmpeg.wasm to cut clips locally, so no footage ever leaves the page.",
+    image: `${import.meta.env.BASE_URL}img/projects/video-editor.jpg`,
+    tags: ["React", "TypeScript", "FFmpeg.wasm"],
+    link: "https://github.com/Gogo200202/Video-Editor",
   },
   {
-    title: "orbit-os",
-    description: "Tiny fake operating system that boots inside the browser.",
-    image: "https://picsum.photos/seed/orbitos/480/300?grayscale",
-    tags: ["React", "WASM"],
-    link: "https://github.com/Gogo200202",
+    title: "windows-xp-portfolio",
+    description:
+      "Playable Windows XP desktop in Three.js — raycast clicks open each screen of my résumé.",
+    image: `${import.meta.env.BASE_URL}img/projects/windows-xp.jpg`,
+    tags: ["Three.js", "React", "WebGL"],
+    link: "https://github.com/Gogo200202/portFolioWindowsXp",
+    demo: "https://gogo200202.github.io/portFolioWindowsXp/",
   },
   {
-    title: "packet-sniff",
+    title: "music-player",
     description:
-      "Live network traffic visualiser that draws packets falling like rain.",
-    image: "https://picsum.photos/seed/packets/480/300?grayscale",
-    tags: ["Go", "WebSockets"],
-    link: "https://github.com/Gogo200202",
+      "React music player with a track list, playback and volume controls, plus sign-in and sign-up screens.",
+    image: `${import.meta.env.BASE_URL}img/projects/music-player.jpg`,
+    tags: ["React", "Tailwind", "Vite"],
+    link: "https://github.com/Gogo200202/MusicPlayerApp",
+    demo: "https://gogo200202.github.io/MusicPlayerApp/",
   },
 ];
 

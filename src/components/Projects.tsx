@@ -11,7 +11,10 @@ export interface Project {
   description: string;
   image: string;
   tags: string[];
+  /** Source repository. */
   link: string;
+  /** Optional live deployment. */
+  demo?: string;
 }
 
 function ProjectCard({ project }: { project: Project }) {
@@ -31,7 +34,12 @@ function ProjectCard({ project }: { project: Project }) {
         src={project.image}
         alt={project.title}
         loading="lazy"
-        sx={{ width: "100%", aspectRatio: "16 / 10", objectFit: "cover" }}
+        sx={{
+          width: "100%",
+          aspectRatio: "16 / 10",
+          objectFit: "cover",
+          filter: "grayscale(1)",
+        }}
       />
       <Box
         sx={{
@@ -52,9 +60,16 @@ function ProjectCard({ project }: { project: Project }) {
           {project.description}
         </Typography>
         <Typography variant="body2">{project.tags.join(" · ")}</Typography>
-        <Link href={project.link} target="_blank" variant="body2">
-          source ↗
-        </Link>
+        <Box sx={{ display: "flex", gap: 2 }}>
+          {project.demo && (
+            <Link href={project.demo} target="_blank" variant="body2">
+              live ↗
+            </Link>
+          )}
+          <Link href={project.link} target="_blank" variant="body2">
+            source ↗
+          </Link>
+        </Box>
       </Box>
     </Box>
   );
