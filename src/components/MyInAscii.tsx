@@ -12,10 +12,6 @@ const HOLD_PHOTO_MS = 2600;
 // One full hand-over sweep: long enough to read, short enough to loop.
 const SWEEP_MS = 2200;
 
-// A black-to-white ramp keeps the portrait monochrome: black glass and
-// grayscale glyphs. The photo itself is grayscaled by the wrapper filter.
-const MONO_RAMP = ["#000000", "#ffffff"] as const;
-
 // Vite serves the app from a base path, so build the URL from it.
 const PORTRAIT = `${import.meta.env.BASE_URL}img/me.png`;
 // public/img/me.png is 1080 x 1030.
@@ -77,15 +73,14 @@ export function MyInAscii() {
         alt="Georgi Angelov, drawn in ASCII and then revealed as a photo."
         trigger="manual"
         revealed={revealed}
-        direction="down"
-        charset="standard"
-        colorMode="duotone"
-        ramp={MONO_RAMP}
+        direction="random"
+        charset="blocks"
+        colorMode="truecolor"
         accent="#ffffff"
         duration={SWEEP_MS}
         cell={10}
         ratio={PORTRAIT_RATIO}
-        className="w-full grayscale"
+        className="w-full"
       />
       {/* Which end of the loop the sweep is heading for. */}
       <p
