@@ -131,13 +131,18 @@ function History() {
           rows={historyLog.meta.rows}
           seen={seen}
         />
-        <TerminalPanel
-          piece={stackLog}
-          label="Boot-log style list of my tech stack: Java, C#, JavaScript, HTML, CSS, React, Next.js, Tailwind CSS, React Query, Node.js, Spring, ASP.NET, Git, Linux, MongoDB and SQL."
-          cols={stackLog.meta.cols}
-          rows={stackLog.meta.rows}
-          seen={seen}
-        />
+        <div>
+          <p className="mb-1.5 font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
+            tech stack
+          </p>
+          <TerminalPanel
+            piece={stackLog}
+            label="Boot-log style list of my tech stack: Java, C#, JavaScript, HTML, CSS, React, Next.js, Tailwind CSS, React Query, Node.js, Spring, ASP.NET, Git, Linux, MongoDB and SQL."
+            cols={stackLog.meta.cols}
+            rows={stackLog.meta.rows}
+            seen={seen}
+          />
+        </div>
       </div>
 
       <HistoryText />
