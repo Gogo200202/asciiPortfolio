@@ -72,7 +72,7 @@ function CoverLetter() {
         flexDirection: "column",
       }}
     >
-      <div className="mx-auto mb-4 flex w-full max-w-6xl items-baseline justify-between gap-4 font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
+      <div className="mx-auto mb-4 flex w-full max-w-6xl items-baseline justify-between gap-4 font-mono text-base tracking-[0.18em] text-muted-foreground uppercase sm:text-lg">
         <h2 id="cover-letter-heading">cover letter</h2>
         <span>01 letter</span>
       </div>

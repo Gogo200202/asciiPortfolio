@@ -207,7 +207,7 @@ function Projects({ projects }: { projects: Project[] }) {
           mx: "auto",
         }}
       >
-        <div className="mb-6 flex items-baseline justify-between gap-4 font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
+        <div className="mb-6 flex items-baseline justify-between gap-4 font-mono text-base tracking-[0.18em] text-muted-foreground uppercase sm:text-lg">
           <h2 id="projects-heading">projects</h2>
           <span>{String(repoCount).padStart(2, "0")} repos</span>
         </div>

@@ -41,7 +41,7 @@ function Contact() {
         flexDirection: "column",
       }}
     >
-      <div className="mx-auto mb-4 flex w-full items-baseline justify-between gap-4 font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
+      <div className="mx-auto mb-4 flex w-full items-baseline justify-between gap-4 font-mono text-base tracking-[0.18em] text-muted-foreground uppercase sm:text-lg">
         <h2 id="contact-heading">contact</h2>
         <span>04 channels</span>
       </div>

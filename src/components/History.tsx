@@ -118,7 +118,7 @@ function History() {
         justifyContent: "center",
       }}
     >
-      <div className="mx-auto mb-4 flex w-full max-w-6xl items-baseline justify-between gap-4 font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
+      <div className="mx-auto mb-4 flex w-full max-w-6xl items-baseline justify-between gap-4 font-mono text-base tracking-[0.18em] text-muted-foreground uppercase sm:text-lg">
         <h2 id="history-heading">history</h2>
         <span>03 entries</span>
       </div>
@@ -132,7 +132,7 @@ function History() {
           seen={seen}
         />
         <div>
-          <p className="mb-1.5 font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
+          <p className="mb-1.5 font-mono text-sm tracking-[0.18em] text-muted-foreground uppercase sm:text-base">
             tech stack
           </p>
           <TerminalPanel
