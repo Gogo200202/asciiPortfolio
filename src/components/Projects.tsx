@@ -5,6 +5,7 @@ import Typography from "@mui/material/Typography";
 import { AsciiTabs } from "./asciicn/ascii-tabs";
 import type { AsciiTab } from "./asciicn/ascii-tabs";
 import Header from "./Header";
+import History from "./History";
 import MyInAscii from "./MyInAscii";
 
 export interface ProjectSource {
@@ -191,6 +192,8 @@ function Projects({ projects }: { projects: Project[] }) {
           </Box>
         </Box>
       </Box>
+
+      <History />
 
       <Box
         component="section"
