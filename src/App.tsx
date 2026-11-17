@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import CanvasBackdrop from "./components/CanvasBackdrop.jsx";
+import Contact from "./components/Contact.jsx";
 import LoadingScreen from "./components/LoadingScreen.jsx";
 import Projects from "./components/Projects.jsx";
 
@@ -111,6 +112,7 @@ function App() {
       <CanvasBackdrop />
       <div className="relative z-10">
         <Projects projects={projects} />
+        <Contact />
       </div>
     </>
   );
