@@ -27,10 +27,14 @@ function CoverLetter() {
       ([entry]) => {
         if (entry?.isIntersecting) {
           setStarted(true);
+          // Disconnect on first sight: even scrolling away and back cannot
+          // replay the animation.
           observer.disconnect();
         }
       },
-      { rootMargin: "-15% 0px -15% 0px" }
+      // Watch the letter panel, not the full-screen section, and wait until
+      // half of it is actually on screen before typing a single character.
+      { threshold: 0.5 }
     );
     observer.observe(ref.current);
     return () => observer.disconnect();
@@ -57,7 +61,6 @@ function CoverLetter() {
 
   return (
     <Box
-      ref={ref}
       component="section"
       aria-labelledby="cover-letter-heading"
       sx={{
@@ -74,7 +77,10 @@ function CoverLetter() {
         <span>01 letter</span>
       </div>
 
-      <div className="mx-auto flex w-full max-w-6xl min-w-0 flex-1 flex-col overflow-hidden rounded-sm border border-border/60 bg-background/80 p-4 backdrop-blur-[2px] sm:p-6">
+      <div
+        ref={ref}
+        className="mx-auto flex w-full max-w-6xl min-w-0 flex-1 flex-col overflow-hidden rounded-sm border border-border/60 bg-background/80 p-4 backdrop-blur-[2px] sm:p-6"
+      >
         <p className="font-mono text-[11px] tracking-[0.12em] text-muted-foreground sm:text-xs">
           <span style={{ color: "var(--ascii-color-blue)" }}>$</span>{" "}
           cat ~/cover-letter.txt
