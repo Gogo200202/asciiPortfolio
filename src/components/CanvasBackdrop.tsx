@@ -6,15 +6,6 @@ import { AsciiCanvas } from "@/components/asciicn/ascii-canvas";
 import { BACKGROUND_RIPPLE_EVENT } from "@/lib/background-ripple";
 import type { BackgroundRippleDetail } from "@/lib/background-ripple";
 
-/**
- * The asciicn glyph pad used as the page backdrop.
- *
- * The pad sits behind the page with pointer events off, so links and
- * selection keep working. A window listener forwards mouse movement to the
- * pad, which lets its brush follow the cursor, and forwards clicks so they
- * send ripples through the ink. When the cursor stops, the pad's idle ghost
- * brush takes over. `inert` keeps the decorative pad out of focus order.
- */
 export function CanvasBackdrop() {
   const hostRef = useRef<HTMLDivElement>(null);
 
@@ -43,8 +34,7 @@ export function CanvasBackdrop() {
           buttons,
           clientX: x,
           clientY: y,
-          // An impossible id: the pad's setPointerCapture then throws and is
-          // ignored, so the real pointer keeps hitting links and text.
+
           pointerId: 99999,
           pointerType: "mouse",
         })
@@ -62,16 +52,16 @@ export function CanvasBackdrop() {
     };
 
     const onMove = (event: PointerEvent) => {
-      // Ignore the synthetic events this effect dispatches back into the pad.
+      
       if (!event.isTrusted) {
         return;
       }
-      // A release outside the window can be missed; reset before hovering.
+      
       if (pressed && event.buttons === 0) {
         pressed = false;
         send("pointerup", event.clientX, event.clientY, 0);
       }
-      // Touch is for scrolling; a held button is for selecting or dragging.
+      
       if (event.pointerType !== "mouse" || event.buttons !== 0) {
         return;
       }
@@ -108,7 +98,6 @@ export function CanvasBackdrop() {
       send("pointerup", -1, -1, 0);
     };
 
-    // Content (the portrait reveal) can splash the backdrop as if clicked.
     const onBackdropRipple = (event: Event) => {
       const { detail } = event as CustomEvent<BackgroundRippleDetail>;
       if (!detail || !Number.isFinite(detail.x) || !Number.isFinite(detail.y)) {

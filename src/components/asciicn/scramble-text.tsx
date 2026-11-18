@@ -12,18 +12,10 @@ import {
 import type { AsciiColor } from "@/lib/ascii";
 import { cn } from "@/lib/utils";
 
-/*
- * Every character keeps its own slot: the final text is always laid out
- * (invisible while it scrambles), and the cycling glyph is painted over
- * the slot by a pseudo-element centred on it. Nothing the animation does
- * can move the layout, and copying the text copies the final string.
- */
-
-/** Glyph sets the characters cycle through before they settle. */
 export const SCRAMBLE_GLYPHS = {
   binary: "01",
   blocks: "░▒▓█▀▄▌▐▖▗▘▝▙▛▜▟",
-  // Generated: every braille pattern but the empty one.
+  
   braille: "",
   cp437: "░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤÷≈°∙√ⁿ²■",
   hex: "0123456789abcdef",
@@ -45,7 +37,7 @@ export const SCRAMBLE_GLYPH_NAMES = [
 ] as const satisfies readonly ScrambleGlyphs[];
 
 export const SCRAMBLE_TRIGGERS = ["mount", "view", "hover", "loop"] as const;
-/** When the scramble plays. Changing the text always plays it again. */
+
 export type ScrambleTrigger = (typeof SCRAMBLE_TRIGGERS)[number];
 
 export type ScrambleTextTag = "h1" | "h2" | "h3" | "h4" | "p" | "span" | "div";
@@ -54,29 +46,29 @@ export interface ScrambleTextProps extends Omit<
   HTMLAttributes<HTMLElement>,
   "children" | "color"
 > {
-  /** The final text. It is what screen readers, search and copy get. */
+  
   children: string;
-  /** The element to render. Default `"span"`. */
+  
   as?: ScrambleTextTag;
-  /** The glyph set characters cycle through. Default `"katakana"`. */
+  
   glyphs?: ScrambleGlyphs;
-  /** Your own glyphs to cycle through, such as `"▚▞"`. Wins over `glyphs`. */
+  
   characters?: string;
-  /** When it plays. Default `"view"`. */
+  
   trigger?: ScrambleTrigger;
-  /** Seconds every character scrambles before the first one settles. Default 0.5. */
+  
   duration?: number;
-  /** Seconds between neighbours settling, left to right. Default 0.035. */
+  
   stagger?: number;
-  /** Seconds to wait before starting. Default 0. */
+  
   delay?: number;
-  /** New glyphs per second while scrambling. Default 20. */
+  
   rate?: number;
-  /** `loop`: seconds to hold the settled text before playing again. Default 2.5. */
+  
   pause?: number;
-  /** Colour of the scrambling glyphs. Default `"ink"`. */
+  
   color?: AsciiColor;
-  /** Called each time the text has fully settled. */
+  
   onComplete?: () => void;
 }
 
@@ -92,7 +84,6 @@ const BRAILLE = Array.from({ length: 255 }, (_, index) =>
   brailleChar(index + 1)
 ).join("");
 
-// A float hash in [0, 1): cheap, stable for integer inputs, no bitwise maths.
 const hash = (a: number, b: number): number => {
   const value = Math.sin(a * 127.1 + b * 311.7) * 43_758.5453;
   return value - Math.floor(value);
@@ -100,12 +91,6 @@ const hash = (a: number, b: number): number => {
 
 const isBlank = (glyph: string) => glyph.trim() === "";
 
-/**
- * Text whose characters cycle through glyph sets (katakana, braille,
- * CP437, PETSCII, symbols and more) and settle left to right: on mount,
- * when scrolled into view, on hover, or on a loop. The layout never
- * moves, because every character keeps its final slot throughout.
- */
 export const ScrambleText = ({
   children,
   as: Tag = "span",
@@ -220,7 +205,6 @@ export const ScrambleText = ({
     step(start);
   }, [poolKey]);
 
-  // Plays on its trigger and whenever the text changes.
   const armed = trigger === "mount" || (trigger !== "hover" && inView);
   useEffect(() => {
     if (reduced) {
@@ -230,13 +214,12 @@ export const ScrambleText = ({
     if (armed) {
       play();
     }
-    // Leaving the screen mid-scramble settles every character at once.
+    
     return stop;
   }, [armed, reduced, play, stop, children]);
 
   const vars: ScrambleVars = { "--scr-ink": cssColor(color) };
 
-  // Words stay whole when the line wraps; the spaces between them can break.
   let index = 0;
   const words = children.split(/(\s+)/);
 
@@ -265,11 +248,11 @@ export const ScrambleText = ({
           }
           if (/^\s+$/.test(word)) {
             index += [...word].length;
-            // oxlint-disable-next-line no-array-index-key -- words are positional.
+            
             return <span key={wordIndex}>{word}</span>;
           }
           return (
-            // oxlint-disable-next-line no-array-index-key -- words are positional.
+            
             <span key={wordIndex} className="inline-block whitespace-pre">
               {[...word].map((letter) => {
                 const slot = index;

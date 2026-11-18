@@ -10,7 +10,7 @@ import History from "./History";
 import MyInAscii from "./MyInAscii";
 
 export interface ProjectSource {
-  /** Shown on the link row, e.g. the repository name. */
+  
   label: string;
   href: string;
 }
@@ -20,9 +20,9 @@ export interface Project {
   description: string;
   image: string;
   tags: string[];
-  /** Source repositories, one entry per repo. */
+  
   sources: ProjectSource[];
-  /** Optional live deployment. */
+  
   demo?: string;
 }
 

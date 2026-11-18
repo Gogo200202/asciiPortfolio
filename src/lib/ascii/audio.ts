@@ -1,22 +1,9 @@
 "use client";
 
-/**
- * Audio-reactive input: `useAudioBands(source)` analyses a microphone, a
- * media element, a stream or a built-in demo synth, and keeps smoothed
- * bass, mid, treble and level values (0 to 1) on one stable object. Pass
- * that object to `AsciiShader`'s `audio` prop and fields read it as
- * `u_audio` (vec4: bass, mid, treble, level).
- *
- * The microphone needs a secure context (https or localhost). On plain
- * http `navigator.mediaDevices` is missing and status becomes
- * `"unavailable"` instead of throwing.
- */
-
 import { useEffect, useReducer, useRef } from "react";
 
 export type AudioStatus = "idle" | "running" | "denied" | "unavailable";
 
-/** Where the sound comes from. `"synth"` is a silent built-in demo tone. */
 export type AudioSource =
   | "mic"
   | "synth"
@@ -24,7 +11,6 @@ export type AudioSource =
   | MediaStream
   | null;
 
-/** Smoothed band levels, updated in place every animation frame. */
 export interface AudioBands {
   bass: number;
   mid: number;
@@ -34,14 +20,14 @@ export interface AudioBands {
 }
 
 export interface AudioBandsOptions {
-  /** 0 follows every beat, close to 1 drifts. Default 0.8. */
+  
   smoothing?: number;
-  /** Multiplier before clamping to 1, for quiet sources. Default 1.4. */
+  
   gain?: number;
 }
 
 let sharedContext: AudioContext | null = null;
-// A media element can feed only one MediaElementSourceNode for its lifetime.
+
 const elementSources = new WeakMap<
   HTMLMediaElement,
   MediaElementAudioSourceNode
@@ -55,10 +41,6 @@ const audioContext = (): AudioContext | null => {
   return sharedContext;
 };
 
-/**
- * A demo source that needs no permission: a slow bass pulse, a wandering
- * mid tone and hissy treble bursts, routed to the analyser only (silent).
- */
 const createSynth = (context: AudioContext, into: AudioNode): (() => void) => {
   const bass = context.createOscillator();
   bass.type = "sine";
@@ -119,11 +101,6 @@ const createSynth = (context: AudioContext, into: AudioNode): (() => void) => {
 
 const NO_OPTIONS: AudioBandsOptions = {};
 
-/**
- * Analyse `source` while mounted. Returns the same object every render; its
- * band values change every frame without re-rendering, and the component
- * re-renders only when `status` changes.
- */
 export const useAudioBands = (
   source: AudioSource,
   options: AudioBandsOptions = NO_OPTIONS
@@ -191,7 +168,7 @@ export const useAudioBands = (
     const start = (node: AudioNode) => {
       node.connect(analyser);
       cleanups.push(() => node.disconnect(analyser));
-      // Browsers start contexts suspended until a gesture; try, and retry on one.
+      
       const resume = async () => {
         try {
           await context.resume();
@@ -248,7 +225,7 @@ export const useAudioBands = (
       if (!node) {
         node = context.createMediaElementSource(source);
         elementSources.set(source, node);
-        // A media element routed through Web Audio must still reach the speakers.
+        
         node.connect(context.destination);
       }
       start(node);

@@ -1,94 +1,80 @@
 export const SEED_KINDS = ["ribbons", "nebula"] as const;
 export type SeedKind = (typeof SEED_KINDS)[number];
 
-/** An sRGB colour with channels in [0, 1]. */
 export type SeedRgb = readonly [number, number, number];
 
-/** Four colours from the deepest tone to the brightest. */
 export type SeedStops = readonly [SeedRgb, SeedRgb, SeedRgb, SeedRgb];
 
-/**
- * Two versions of one palette: `dark` for glyphs on a dark paper (deep to
- * bright), `light` for glyphs on a light paper (pale to deep), so the
- * densest glyphs always have the most contrast.
- */
 export interface SeedPalette {
   readonly dark: SeedStops;
   readonly light: SeedStops;
-  /** The hues the palette runs through, in degrees, first to last. */
+  
   readonly hues: readonly [number, number];
 }
 
 interface SeedShared {
   readonly seed: string;
   readonly palette: SeedPalette;
-  /** Noise offset, so two seeds never share a neighbourhood. */
+  
   readonly offset: readonly [number, number];
-  /** Drift speed in field units per second. */
+  
   readonly drift: number;
-  /** Exposure gain the critic settled on. */
+  
   readonly gain: number;
 }
 
-/** Parameters for folded ribbons of light. */
 export interface RibbonParams extends SeedShared {
   readonly kind: "ribbons";
-  /** How many ribbons, 3 to 5. */
+  
   readonly count: number;
-  /** How far apart the ribbons sit, as a share of the box height. */
+  
   readonly spread: number;
-  /** Height of the main swing of each ribbon. */
+  
   readonly amplitude: number;
-  /** Swings across the box. */
+  
   readonly frequency: number;
-  /** How much slow noise bends each ribbon off its swing. */
+  
   readonly fold: number;
-  /** Half-width of a ribbon face-on, as a share of the box height. */
+  
   readonly width: number;
-  /** How often a ribbon turns edge-on along its length. */
+  
   readonly twist: number;
-  /** Strength of the halo around each ribbon, 0 to 1. */
+  
   readonly glow: number;
-  /** Tilt of the whole set, in radians. */
+  
   readonly angle: number;
 }
 
-/** Parameters for domain-warped gas. */
 export interface NebulaParams extends SeedShared {
   readonly kind: "nebula";
-  /** Size of the clouds; higher makes more, smaller ones. */
+  
   readonly scale: number;
-  /** How far each noise layer bends the next. */
+  
   readonly warp: number;
-  /** Strength of the bright filaments, 0 to 1. */
+  
   readonly ridge: number;
-  /** The noise level where gas starts; lower fills more of the box. */
+  
   readonly density: number;
-  /** How much the gas turns around the centre. */
+  
   readonly swirl: number;
-  /** How many stars show through, 0 to 1. */
+  
   readonly stars: number;
 }
 
 export type SeedParams = RibbonParams | NebulaParams;
 
-/** A closed range `[min, max]`. */
 export type SeedRange = readonly [number, number];
 
-/**
- * Steers a seed without fixing it: presets pin a hue family or narrow a
- * parameter, and the seed rolls the rest.
- */
 export interface SeedOptions {
-  /** The first hue is drawn from this range, in degrees. Default: any clean hue. */
+  
   readonly hue?: SeedRange;
-  /** How far the palette turns from the first hue, in degrees (negative turns the other way). */
+  
   readonly turn?: SeedRange;
-  /** Chroma scale for the palette, 0.4 (muted) to 1.3 (vivid). Default 1. */
+  
   readonly vividness?: number;
-  /** Narrower ranges for the ribbon parameters. */
+  
   readonly ribbons?: Partial<Record<RibbonKey, SeedRange>>;
-  /** Narrower ranges for the nebula parameters. */
+  
   readonly nebula?: Partial<Record<NebulaKey, SeedRange>>;
 }
 
@@ -136,34 +122,26 @@ const NEBULA_RANGES = {
   warp: [0.6, 1.3],
 } as const satisfies Record<NebulaKey, SeedRange>;
 
-// ---------------------------------------------------------------------------
-// Random numbers
-
-/** FNV-1a (offset 2166136261, prime 16777619) over the code points of `text`: a 32-bit starting state. */
 const hashSeed = (text: string): number => {
   let hash = 2_166_136_261;
   for (const char of text) {
     hash ^= char.codePointAt(0) ?? 0;
     hash = Math.imul(hash, 16_777_619);
   }
-  // oxlint-disable-next-line unicorn/prefer-math-trunc -- a 32-bit wrap, not rounding
+  
   return hash >>> 0;
 };
 
-/**
- * A splitmix32 generator for `seed`: each call returns the next number in
- * [0, 1). Small, fast and well mixed, which is all parameter rolls need.
- */
 export const seedRandom = (seed: string): (() => number) => {
   let state = hashSeed(seed);
   return () => {
-    // oxlint-disable-next-line unicorn/prefer-math-trunc -- a 32-bit wrap, not rounding
+    
     state = (state + 2_654_435_769) | 0;
     let z = state;
     z = Math.imul(z ^ (z >>> 16), 2_246_822_507);
     z = Math.imul(z ^ (z >>> 13), 3_266_489_909);
     z ^= z >>> 16;
-    // oxlint-disable-next-line unicorn/prefer-math-trunc -- a 32-bit wrap, not rounding
+    
     return (z >>> 0) / 4_294_967_296;
   };
 };
@@ -173,12 +151,8 @@ const between = (random: () => number, [min, max]: SeedRange) =>
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
 
-// ---------------------------------------------------------------------------
-// OKLCH palettes
-
 const DEG = Math.PI / 180;
 
-/** OKLCH to linear sRGB (Björn Ottosson's OKLab matrices). */
 const oklchToLinear = (
   lightness: number,
   chroma: number,
@@ -206,10 +180,6 @@ const encodeSrgb = (linear: number) => {
     : 1.055 * value ** (1 / 2.4) - 0.055;
 };
 
-/**
- * An OKLCH colour as sRGB. Out-of-gamut colours keep their lightness and
- * hue and lose chroma until they fit, so a vivid stop never shifts hue.
- */
 export const oklchToRgb = (
   lightness: number,
   chroma: number,
@@ -232,11 +202,6 @@ export const oklchToRgb = (
   return [encodeSrgb(rgb[0]), encodeSrgb(rgb[1]), encodeSrgb(rgb[2])];
 };
 
-/**
- * Hues that turn to mud at the lightness glyph palettes need: olive,
- * khaki and brown-yellow. Palettes never start in this band and never run
- * through it.
- */
 const MUDDY: SeedRange = [68, 118];
 
 const wrapHue = (hue: number) => ((hue % 360) + 360) % 360;
@@ -246,7 +211,6 @@ const isMuddy = (hue: number) => {
   return h >= MUDDY[0] && h <= MUDDY[1];
 };
 
-/** Whether the arc from `from`, turning by `turn` degrees, touches the muddy band. */
 const crossesMud = (from: number, turn: number) => {
   const steps = Math.max(2, Math.ceil(Math.abs(turn) / 4));
   for (let step = 0; step <= steps; step += 1) {
@@ -257,9 +221,6 @@ const crossesMud = (from: number, turn: number) => {
   return false;
 };
 
-// Lightness and chroma per stop. Glyph density already carries brightness,
-// so the stops stay close in lightness and the colour carries hue: two
-// ribbons a glyph apart can differ in colour without one going dark.
 const DARK_PAPER = {
   chroma: [0.15, 0.17, 0.15, 0.1],
   lightness: [0.56, 0.66, 0.76, 0.88],
@@ -285,17 +246,12 @@ const buildStops = (
   return [at(0), at(1), at(2), at(3)];
 };
 
-/**
- * A palette from `random`: a clean starting hue, a turn of 30 to 120
- * degrees that avoids the muddy band, and lightness steps that keep
- * neighbouring glyph tones apart on both dark and light paper.
- */
 export const seedPalette = (
   random: () => number,
   options: Pick<SeedOptions, "hue" | "turn" | "vividness"> = {}
 ): SeedPalette => {
   let first = between(random, options.hue ?? [0, 360]);
-  // Free hues re-roll out of the mud; a preset's own range is trusted.
+  
   for (let tries = 0; options.hue === undefined && isMuddy(first); tries += 1) {
     first = between(random, [0, 360]);
     if (tries > 8) {
@@ -321,10 +277,6 @@ export const seedPalette = (
     light: buildStops(hues, LIGHT_PAPER, vividness),
   };
 };
-
-// ---------------------------------------------------------------------------
-// Noise, mirrored in GLSL below. Both sides use the same arithmetic, so the
-// critic sees (almost exactly) what the GPU will draw.
 
 const fract = (value: number) => value - Math.floor(value);
 
@@ -376,10 +328,6 @@ const smoothstep = (edge0: number, edge1: number, x: number) => {
   return t * t * (3 - 2 * t);
 };
 
-// ---------------------------------------------------------------------------
-// GLSL
-
-/** Noise shared by both kinds. The CPU copies above follow it line by line. */
 const SEED_NOISE = `
 float seedHash(vec2 p) {
   vec3 q = fract(vec3(p.xyx) * 0.1031);
@@ -409,14 +357,12 @@ float seedFbm(vec2 p) {
   return sum / 0.9375;
 }
 
-// The palette for this paper: dark-paper stops, or light-paper ones.
 vec3 seedStop(int index) {
   vec3 dark = index == 0 ? seedDark0 : index == 1 ? seedDark1 : index == 2 ? seedDark2 : seedDark3;
   vec3 light = index == 0 ? seedLight0 : index == 1 ? seedLight1 : index == 2 ? seedLight2 : seedLight3;
   return mix(dark, light, seedOnLight);
 }
 
-// Bright glyphs on dark paper catch a little white, like light on glass.
 vec3 seedSheen(vec3 color, float tone) {
   return mix(color, vec3(1.0), pow(tone, 6.0) * 0.3 * (1.0 - seedOnLight));
 }
@@ -428,25 +374,15 @@ vec3 seedColor(float x) {
   return mix(seedStop(2), seedStop(3), s - 2.0);
 }
 
-// Faint light below a glyph's worth drops to paper, so the space between
-// shapes stays clean instead of filling with the ramp's first glyph.
 float seedFloor(float tone) {
   return clamp((tone - 0.05) / 0.95, 0.0, 1.0);
 }
 
-// Centred box coordinates: y from -0.5 to 0.5, x scaled to the true aspect.
 vec2 seedCentred(vec2 uv, vec2 res) {
   return vec2((uv.x - 0.5) * res.x / res.y, uv.y - 0.5);
 }
 `;
 
-/**
- * Folded ribbons. Each ribbon swings across the box, bent by slow noise,
- * and its width follows |cos| along its length: where the cosine crosses
- * zero the band is edge-on, a thin bright line, like a strip of film
- * twisting in the light. `seedRibbons` returns the tone in x and the
- * ribbon that dominates in y, for the colour.
- */
 const RIBBONS_BODY = `
 vec2 seedRibbons(vec2 uv, vec2 res, float t) {
   vec2 c = seedCentred(uv, res);
@@ -474,7 +410,7 @@ vec2 seedRibbons(vec2 uv, vec2 res, float t) {
       float rimWidth = w * 0.22 + 0.006;
       float rim = exp(-pow((d - w) / rimWidth, 2.0)) * 0.75;
       float halo = seedRibbonFold.w * 0.22 * seedRibbonFold.y / (d + seedRibbonFold.y * 1.5);
-      // Back ribbons sit a little dimmer, for depth.
+      
       float depth = mix(1.0, 0.68, fract(i * 0.618 + seedMotion.y));
       float glow = clamp((face + rim + halo) * depth, 0.0, 1.0);
       miss *= 1.0 - glow;
@@ -498,18 +434,11 @@ float field(vec2 uv, vec2 res, float t) {
 const RIBBONS_COLOR = `${SEED_NOISE}${RIBBONS_BODY}
 vec3 colorField(vec2 uv, vec2 res, float t) {
   vec2 r = seedRibbons(uv, res, t);
-  // Each ribbon takes its own hue along the palette, so a prism of violet
-  // and teal shows both; tone only nudges it.
+
   return seedSheen(seedColor(r.y * 0.9 + 0.05 + (r.x - 0.5) * 0.15), r.x);
 }
 `;
 
-/**
- * Domain-warped gas: three fbm layers, each bending the next. The ridge of
- * the middle layer (where it crosses 0.5) draws thin bright filaments
- * through the thicker parts. Sparse stars sit behind it, one per lucky
- * sample cell, so they stay sharp in every charset.
- */
 const NEBULA_BODY = `
 vec3 seedNebula(vec2 uv, vec2 res, float t) {
   vec2 c = seedCentred(uv, res);
@@ -522,15 +451,13 @@ vec3 seedNebula(vec2 uv, vec2 res, float t) {
   float a = seedFbm(q);
   float b = seedFbm(q * 1.7 + seedGas.y * 2.0 * vec2(a - 0.5, 0.5 - a) + vec2(1.7, 9.2) + vec2(0.0, t * drift * 0.5));
   float g = seedFbm(q + seedGas.y * 3.0 * vec2(b - 0.5, a - 0.5) + vec2(8.3, 2.8));
-  // The cloud: a broad soft edge, squared so the core is dense and the
-  // rim runs down through the middle of the glyph ramp.
+
   float gas = smoothstep(seedGas.w - 0.18, seedGas.w + 0.42, g);
   gas *= gas;
-  // Filaments where the middle layer crosses its midpoint, reaching a
-  // little past the cloud's edge.
+
   float ridge = pow(1.0 - abs(2.0 * b - 1.0), 5.0) * seedGas.z;
   float reach = smoothstep(seedGas.w - 0.35, seedGas.w + 0.05, g);
-  // Dark dust lanes cutting through the brightest parts.
+  
   float dust = smoothstep(0.55, 0.75, seedFbm(q * 2.3 + vec2(b * 1.5, 4.1)));
   float tone = seedFloor((gas * (1.0 - dust * 0.6) + ridge * reach * 0.7) * seedMotion.w);
   return vec3(tone, g, ridge * reach);
@@ -548,7 +475,7 @@ float seedStars(vec2 uv, vec2 res, float t) {
 const NEBULA_FIELD = `${SEED_NOISE}${NEBULA_BODY}
 float field(vec2 uv, vec2 res, float t) {
   vec3 n = seedNebula(uv, res, t);
-  // Stars only show where the gas is thin.
+  
   return max(n.x, seedStars(uv, res, t) * (1.0 - smoothstep(0.15, 0.45, n.x)));
 }
 `;
@@ -557,22 +484,16 @@ const NEBULA_COLOR = `${SEED_NOISE}${NEBULA_BODY}
 vec3 colorField(vec2 uv, vec2 res, float t) {
   vec3 n = seedNebula(uv, res, t);
   float star = seedStars(uv, res, t) * (1.0 - smoothstep(0.15, 0.45, n.x));
-  // Hue follows the gas layers, so clouds of different depth differ in
-  // colour; filaments climb to the far end of the palette.
+
   vec3 gas = seedSheen(seedColor(clamp((n.y - 0.3) * 1.6 + n.z * 0.6, 0.0, 1.0)), n.x);
   return mix(gas, seedSheen(seedStop(3), 1.0), clamp(star * 1.4, 0.0, 1.0));
 }
 `;
 
-/** The GLSL for each kind: a `field` and a matching `colorField`. */
 export const SEED_GLSL = {
   nebula: { colorField: NEBULA_COLOR, field: NEBULA_FIELD },
   ribbons: { colorField: RIBBONS_COLOR, field: RIBBONS_FIELD },
 } as const satisfies Record<SeedKind, { field: string; colorField: string }>;
-
-// ---------------------------------------------------------------------------
-// CPU mirrors of the tone, for the critic. Stars and haze are left out: they
-// add a little light everywhere and don't change whether a seed works.
 
 const ribbonTone = (
   params: RibbonParams,
@@ -650,27 +571,20 @@ const rawTone = (params: SeedParams, x: number, y: number, t: number) =>
     ? ribbonTone(params, x, y, t)
     : nebulaTone(params, x, y, t);
 
-// ---------------------------------------------------------------------------
-// The exposure critic
-
-/** What the critic measured, before gain. */
 export interface SeedExposure {
-  /** Mean tone, 0 to 1. */
+  
   readonly mean: number;
-  /** Share of samples above a faint glyph (tone 0.18). */
+  
   readonly coverage: number;
-  /** The 96th percentile tone: what the brightest few glyphs reach. */
+  
   readonly peak: number;
 }
 
-// A 16:9 box at low resolution, at three moments, so a seed that only
-// looks right at t = 0 still gets caught.
 const CRITIC_COLUMNS = 40;
 const CRITIC_ROWS = 22;
 const CRITIC_TIMES = [0, 9, 23] as const;
 const CRITIC_ASPECT = 16 / 9;
 
-/** Sample the field and measure it. */
 export const measureExposure = (params: SeedParams): SeedExposure => {
   const tones: number[] = [];
   for (const t of CRITIC_TIMES) {
@@ -692,17 +606,13 @@ export const measureExposure = (params: SeedParams): SeedExposure => {
   };
 };
 
-// Coverage that reads as a full background and still leaves paper between
-// the shapes: a quarter to three fifths of the box carries a glyph.
 const COVERAGE: SeedRange = [0.26, 0.62];
 
-/** How far an exposure sits from the good range; 0 is inside it. */
 const exposurePenalty = ({ coverage, peak }: SeedExposure) =>
   Math.max(0, COVERAGE[0] - coverage) +
   Math.max(0, coverage - COVERAGE[1]) +
   Math.max(0, 0.35 - peak);
 
-/** The gain that lifts the brightest glyphs to near-full tone. */
 const exposureGain = ({ peak }: SeedExposure) =>
   Math.min(2.2, Math.max(0.75, 0.96 / Math.max(peak, 0.05)));
 
@@ -751,12 +661,6 @@ const rollNebula = (
   };
 };
 
-/**
- * Deterministic parameters for `seed`. The palette is rolled once; the
- * shape is rolled up to eight times until the critic is happy, keeping the
- * best roll if none is, and its gain is set so the brightest glyphs land
- * near full tone.
- */
 export const seedParams = (
   seed: string,
   kind: SeedKind,
@@ -792,16 +696,11 @@ export const seedParams = (
   return { ...best, gain: exposureGain(bestExposure) };
 };
 
-// ---------------------------------------------------------------------------
-// Shader inputs
-
 type Vec3 = readonly [number, number, number];
 type Vec4 = readonly [number, number, number, number];
 
-/** Uniforms for a seeded field. `seedOnLight` is 0 on dark paper, 1 on light. */
 export type SeedUniforms = Readonly<Record<string, number | Vec3 | Vec4>>;
 
-/** What `AsciiShader` needs to draw a seeded field. */
 export interface SeedFieldInput {
   readonly field: string;
   readonly colorField: string;
@@ -840,18 +739,13 @@ const kindUniforms = (params: SeedParams): SeedUniforms => {
   };
 };
 
-/** How a seeded field is drawn, separate from what the seed rolled. */
 export interface SeedDrawOptions {
-  /** `true` on light paper: the palette runs pale to deep. Default `false`. */
+  
   readonly onLight?: boolean;
-  /** Scales the critic's exposure, 0 to 1.5. Lower it to sit text on top. Default 1. */
+  
   readonly intensity?: number;
 }
 
-/**
- * The uniforms for `params`. Cheap: call it again when the paper flips
- * between dark and light, without re-rolling the seed.
- */
 export const seedUniforms = (
   params: SeedParams,
   { onLight = false, intensity = 1 }: SeedDrawOptions = {}
@@ -866,14 +760,6 @@ export const seedUniforms = (
   ],
 });
 
-/**
- * Everything `AsciiShader` needs for `seed`:
- *
- * ```tsx
- * const { field, colorField, uniforms } = seedField("orbit", "nebula");
- * <AsciiShader field={field} colorField={colorField} uniforms={uniforms} />
- * ```
- */
 export const seedField = (
   seed: string,
   kind: SeedKind,
@@ -887,6 +773,5 @@ export const seedField = (
   };
 };
 
-/** A palette stop as a CSS colour, for fallbacks and swatches. */
 export const seedCss = ([r, g, b]: SeedRgb): string =>
   `rgb(${Math.round(r * 255)} ${Math.round(g * 255)} ${Math.round(b * 255)})`;

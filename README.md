@@ -1,19 +1,16 @@
-# React + Vite
+# asciiPortfolio
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+An ASCII-themed portfolio for an entry-level full-stack developer, built with React, Vite, TypeScript and MUI. It features a terminal-style boot loader, a git-graph history, an animated cover letter, tabbed project cards and a scramble-text contact footer, all driven by ascii.rest and custom ASCII/WebGL effects. The layout is responsive, supports light and dark themes, and respects reduced-motion preferences.
 
-Currently, two official plugins are available:
+## Run locally
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```bash
+npm install
+npm run dev
+```
 
-## React Compiler
+Open the URL Vite prints, for example `http://localhost:5173/asciiPortfolio/`.
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
+## Live site
 
-Note: This will impact Vite dev & build performances.
-You can also try [the experimental native React Compiler support in plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md#rust-react-compiler) by using `compiler: true` in the plugin options instead of using the Babel plugin.
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+Hosted on GitHub Pages: https://gogo200202.github.io/asciiPortfolio/

@@ -14,57 +14,39 @@ import {
 } from "@/lib/ascii/palettes";
 import type { Ansi16Name, Rgb8 } from "@/lib/ascii/palettes";
 
-/**
- * ascii-export: save any ASCII frame as a file. Plain text, ANSI escape
- * art for terminals, vector SVG, high-DPI PNG and video recorded from the
- * live canvas. `toText`, `toAnsi` and `toSvg` are pure string builders
- * and run anywhere (scripts, servers, tests); the rest need a browser.
- *
- * Every renderer's `handle` ref (`AsciiHandle`) gives you a frame with
- * `capture()`, the colours in use with `colors()` and the cell size with
- * `metrics()`, which is everything these functions need.
- */
-
-// ---------------------------------------------------------------- text
-
 export interface TextOptions {
-  /** Drop trailing spaces from every line. Default `false`. */
+  
   trimEnd?: boolean;
 }
 
-/** The frame as plain text, one line per row. */
 export const toText = (
   frame: AsciiFrame,
   { trimEnd = false }: TextOptions = {}
 ): string => frameToText(frame, { trimEnd });
 
-// ---------------------------------------------------------------- ansi
-
-/** A colour for export: `#rrggbb` or bytes. */
 export type ExportColor = string | Rgb8;
 
 const toRgb = (color: ExportColor): Rgb8 =>
   typeof color === "string" ? hexToRgb(color) : color;
 
 export interface AnsiOptions {
-  /** `truecolor` writes 24-bit SGR colours; `ansi16` snaps to the 16 ANSI colours. Default `"truecolor"`. */
+  
   mode?: "truecolor" | "ansi16";
-  /** `ansi16`: the table to snap to. Default `"vga"`. */
+  
   ansi?: Ansi16Name;
-  /** Colour of glyphs without their own. Default: the terminal's own foreground. */
+  
   ink?: ExportColor;
-  /** Background colour, used with `background`. */
+  
   paper?: ExportColor;
-  /** Paint `paper` behind every cell. Default `false` (the terminal's background shows). */
+  
   background?: boolean;
-  /** Drop trailing spaces from every line. Default `false`. */
+  
   trimEnd?: boolean;
 }
 
 const ESC = "\u001B[";
 export const ANSI_RESET = `${ESC}0m`;
 
-/** SGR codes for one export: foreground per colour, the ink and the background. */
 const ansiCodes = ({
   mode = "truecolor",
   ansi = "vga",
@@ -89,12 +71,6 @@ const ansiCodes = ({
   return { backgroundCode, foreground, inkCode };
 };
 
-/**
- * The frame as ANSI escape art: SGR colour codes before each run of
- * same-coloured glyphs, a reset at the end of every line (so a cut-off
- * line never bleeds colour into the shell) and at the very end. `cat` the
- * result in any modern terminal.
- */
 export const toAnsi = (
   frame: AsciiFrame,
   options: AnsiOptions = {}
@@ -121,7 +97,7 @@ export const toAnsi = (
     for (let column = 0; column < end; column += 1) {
       const index = row * columns + column;
       const glyph = glyphs[index] ?? " ";
-      // Spaces keep the current colour: they show no ink.
+      
       const code = glyph === " " ? current : codeAt(index);
       if (code !== current) {
         line += code;
@@ -134,23 +110,17 @@ export const toAnsi = (
   return `${lines.join("\n")}${ANSI_RESET}`;
 };
 
-// ---------------------------------------------------------------- svg
-
 export interface SvgOptions {
-  /** Cell size. Default: a 12px cell in the default font (from `metrics`, when a handle gives you one). */
+  
   metrics?: Pick<CellMetrics, "width" | "height"> &
     Partial<Pick<CellMetrics, "fontSize">>;
-  /** Colour of glyphs without their own, any CSS colour. Default `#000`. */
+  
   ink?: string;
-  /** Background colour, or `null` for transparent. Default `null`. */
+  
   paper?: string | null;
-  /** Font family for text glyphs. Default: the engine's monospace stack. */
+  
   font?: string;
-  /**
-   * Draw blocks, shades, Braille, box lines and dots as vector shapes (the
-   * same geometry the renderers use) instead of text, so they join without
-   * seams and need no font. Default `true`.
-   */
+  
   shapes?: boolean;
 }
 
@@ -189,7 +159,6 @@ interface SvgCell {
   readonly shapes: boolean;
 }
 
-/** Columns up to the last glyph that is drawn as text. */
 const textEnd = (frame: AsciiFrame, row: number, shapes: boolean): number => {
   const { columns, glyphs } = frame;
   let end = columns;
@@ -203,10 +172,6 @@ const textEnd = (frame: AsciiFrame, row: number, shapes: boolean): number => {
   return end;
 };
 
-/**
- * One row: its text as a `<text>` with a `<tspan>` per colour run (or "" when
- * it has no text), and its geometric glyphs appended to `paths` by colour.
- */
 const svgRow = (
   frame: AsciiFrame,
   row: number,
@@ -214,7 +179,7 @@ const svgRow = (
   paths: Map<string, string>
 ): string => {
   const { columns, glyphs } = frame;
-  // Trailing spaces and shapes carry no text; stop before them so textLength stays true.
+  
   const end = textEnd(frame, row, cell.shapes);
   let body = "";
   let run = "";
@@ -253,7 +218,7 @@ const svgRow = (
       flush();
       current = color;
     }
-    // A shape leaves a space in the text so later columns stay in place.
+    
     run += shape ? " " : glyph;
   }
   flush();
@@ -263,11 +228,6 @@ const svgRow = (
   return `<text xml:space="preserve" y="${round((row + 0.5) * cell.height)}" textLength="${round(end * cell.width)}" lengthAdjust="spacing" dominant-baseline="central">${body}</text>`;
 };
 
-/**
- * The frame as a standalone SVG: one `<text>` per row with `<tspan>`s for
- * colour runs, `textLength` pinning every row to exact columns whatever
- * font the viewer has, and geometric glyphs as one path per colour.
- */
 export const toSvg = (
   frame: AsciiFrame,
   {
@@ -314,23 +274,16 @@ export const toSvg = (
   ].join("");
 };
 
-// ---------------------------------------------------------------- png
-
 export interface PngOptions {
-  /**
-   * Device pixels per CSS pixel. For a handle without `scale`, the live
-   * canvas is saved as it is (CRT effects included). With `scale`, or for
-   * a frame, the frame is re-rendered at that density. Default 2 when
-   * re-rendering.
-   */
+  
   scale?: number;
-  /** Re-render: colour of glyphs without their own. Default: the handle's ink, or `#000`. */
+  
   ink?: string;
-  /** Re-render: background, or `null` for transparent. Default: the handle's paper. */
+  
   paper?: string | null;
-  /** Re-render: cell height in CSS pixels. Default: the handle's, or 12. */
+  
   cell?: number;
-  /** Re-render: font family. Default: the handle's, or the engine's monospace stack. */
+  
   font?: string;
 }
 
@@ -339,7 +292,7 @@ const isHandle = (
 ): value is AsciiHandle => "capture" in value;
 
 const canvasToBlob = (canvas: HTMLCanvasElement): Promise<Blob> =>
-  // oxlint-disable-next-line promise/avoid-new -- wraps a callback API.
+  
   new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {
       if (blob) {
@@ -350,10 +303,8 @@ const canvasToBlob = (canvas: HTMLCanvasElement): Promise<Blob> =>
     }, "image/png");
   });
 
-// The largest canvas side every current browser accepts.
 const MAX_CANVAS_SIDE = 16_384;
 
-/** Re-render a frame on a fresh canvas at `scale` device pixels per CSS pixel. */
 export const renderFrame = (
   frame: AsciiFrame,
   {
@@ -383,15 +334,6 @@ export const renderFrame = (
   return canvas;
 };
 
-/**
- * Encode a PNG: a canvas as it is, a handle's live canvas, or a frame
- * re-rendered crisp at `scale`.
- *
- * ```ts
- * const blob = await toPng(handle.current, { scale: 3 });
- * downloadBlob(blob, "scene.png");
- * ```
- */
 export const toPng = async (
   source: AsciiHandle | AsciiFrame | HTMLCanvasElement,
   options: PngOptions = {}
@@ -422,9 +364,6 @@ export const toPng = async (
   return await canvasToBlob(renderFrame(source, options));
 };
 
-// ---------------------------------------------------------------- video
-
-/** Containers tried in order: VP9 WebM, VP8 WebM, then MP4 (Safari). */
 export const VIDEO_TYPES = [
   "video/webm;codecs=vp9",
   "video/webm;codecs=vp8",
@@ -433,7 +372,6 @@ export const VIDEO_TYPES = [
   "video/mp4",
 ] as const;
 
-/** The first video type this browser can record, or `undefined`. */
 export const pickVideoType = (preferred?: string): string | undefined => {
   if (typeof MediaRecorder === "undefined") {
     return undefined;
@@ -443,35 +381,30 @@ export const pickVideoType = (preferred?: string): string | undefined => {
   return candidates.find((type) => MediaRecorder.isTypeSupported(type));
 };
 
-/** The file extension for a recorded type: `"webm"` or `"mp4"`. */
 export const videoExtension = (mimeType: string): "webm" | "mp4" =>
   mimeType.startsWith("video/mp4") ? "mp4" : "webm";
 
 export interface RecorderOptions {
-  /** Capture rate. Default 60. */
+  
   fps?: number;
-  /** Container and codec; falls back through `VIDEO_TYPES`. */
+  
   mimeType?: string;
-  /** Target bitrate. Default 8 Mbps, which keeps small glyphs sharp. */
+  
   bitsPerSecond?: number;
-  /** Called about ten times a second while recording with the elapsed milliseconds. */
+  
   onProgress?: (elapsedMs: number) => void;
 }
 
 export interface CanvasRecorder {
-  /** The type being recorded, such as `"video/webm;codecs=vp9"`. */
+  
   readonly mimeType: string;
-  /** `"inactive"` before start and after stop. */
+  
   readonly state: RecordingState;
   start(): void;
-  /** Stop and resolve with the video. */
+  
   stop(): Promise<Blob>;
 }
 
-/**
- * A start/stop recorder for a canvas, for record buttons. Uses
- * `captureStream` and `MediaRecorder`; throws where neither exists.
- */
 export const createRecorder = (
   canvas: HTMLCanvasElement,
   {
@@ -523,7 +456,7 @@ export const createRecorder = (
       return recorder.state;
     },
     stop: () =>
-      // oxlint-disable-next-line promise/avoid-new -- wraps a callback API.
+      
       new Promise<Blob>((resolve) => {
         const finish = () => {
           halt();
@@ -539,15 +472,6 @@ export const createRecorder = (
   };
 };
 
-/**
- * Record a canvas for `durationMs` and resolve with the video. Keep the
- * renderer animating while it records: a paused canvas records a still.
- *
- * ```ts
- * const video = await recordCanvas(handle.current.canvas, { durationMs: 4000 });
- * downloadBlob(video, `scene.${videoExtension(video.type)}`);
- * ```
- */
 export const recordCanvas = async (
   canvas: HTMLCanvasElement,
   {
@@ -557,16 +481,13 @@ export const recordCanvas = async (
 ): Promise<Blob> => {
   const recorder = createRecorder(canvas, options);
   recorder.start();
-  // oxlint-disable-next-line promise/avoid-new -- a timer has no promise form here.
+  
   await new Promise((resolve) => {
     setTimeout(resolve, durationMs);
   });
   return await recorder.stop();
 };
 
-// ---------------------------------------------------------------- files
-
-/** Save a blob as a file through a temporary link. */
 export const downloadBlob = (blob: Blob, filename: string): void => {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -576,24 +497,22 @@ export const downloadBlob = (blob: Blob, filename: string): void => {
   document.body.append(link);
   link.click();
   link.remove();
-  // Give the download a moment to start before the URL goes away.
+  
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
 
-/** Save text as a file. Default type plain UTF-8 text. */
 export const downloadText = (
   text: string,
   filename: string,
   mime = "text/plain;charset=utf-8"
 ): void => downloadBlob(new Blob([text], { type: mime }), filename);
 
-/** Copy text to the clipboard. Resolves `false` when the browser refuses. */
 export const copyText = async (text: string): Promise<boolean> => {
   try {
     await navigator.clipboard.writeText(text);
     return true;
   } catch {
-    // Older browsers and insecure origins: a hidden textarea and execCommand.
+    
     const area = document.createElement("textarea");
     area.value = text;
     area.setAttribute("readonly", "");
@@ -601,7 +520,7 @@ export const copyText = async (text: string): Promise<boolean> => {
     area.style.opacity = "0";
     document.body.append(area);
     area.select();
-    // oxlint-disable-next-line typescript/no-deprecated -- the only fallback where the Clipboard API is missing.
+    
     const copied = document.execCommand("copy");
     area.remove();
     return copied;

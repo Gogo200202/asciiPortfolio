@@ -32,58 +32,57 @@ export interface AsciiCanvasProps
   extends
     Pick<AsciiLook, "charset" | "chars">,
     Omit<ComponentProps<"div">, "children"> {
-  /** Which glyphs draw the ink. Default `"standard"`. */
+  
   charset?: AsciiLook["charset"];
-  /** Brush radius in cells. Default 1.25. */
+  
   brushSize?: number;
-  /** Seconds for a trail to fade to about a third. Default 1.8. */
+  
   decay?: number;
-  /** How fast ink spreads into its neighbours, 0 to 1. Default 0.5. */
+  
   diffusion?: number;
-  /** How much trails curl and drift as they fade, 0 to 1. Default 0.35. */
+  
   swirl?: number;
-  /** Clicks and taps send ripples that bend the ink. Default `true`. */
+  
   ripples?: boolean;
-  /** A slow ghost brush paints while nobody is drawing. Default `true`. */
+  
   idle?: boolean;
-  /** Ink colours. Each new stroke takes the next one. Default `["--ascii-ink"]`. */
+  
   inks?: readonly AsciiColor[];
-  /** Show the clear button. Default `true`. */
+  
   clearButton?: boolean;
-  /** A short how-to in the corner until the first stroke. `false` hides it. Default `"drag to paint · click to ripple"`. */
+  
   hint?: string | false;
-  /** Background behind the glyphs. Default `"paper"`. */
+  
   background?: AsciiLook["background"];
-  /** Cell height in CSS pixels. Default 12. */
+  
   cell?: number;
-  /** Simulation speed multiplier. Default 1. */
+  
   speed?: number;
-  /** Frame rate cap. Default 60. */
+  
   fps?: number;
-  /** Cap the canvas pixel ratio; see `AsciiGrid`. Default the device's. */
+  
   dpr?: number;
-  /** `false` freezes fading, spreading and the idle brush; painting still works. Default `true`. */
+  
   animate?: boolean;
-  /** Filled with a handle for export. */
+  
   handle?: RefObject<AsciiHandle | null>;
 }
 
 const DEFAULT_INKS: readonly AsciiColor[] = ["--ascii-ink"];
 
-/** Simulation steps per second; slower frames run several. */
 const STEP = 1 / 60;
 const MAX_STEPS = 4;
-/** Seconds the pad waits after the visitor stops before the ghost brush returns. */
+
 const IDLE_AFTER = 4;
-/** Seconds of ghost brush simulated before the first frame, so it never starts blank. */
+
 const WARM_UP = 1.6;
-/** Ink saturates here; above 1 a core stays bright for longer as it fades. */
+
 const INK_MAX = 1.6;
 
 type PadEvent =
   | {
       readonly kind: "stroke";
-      /** From and to, in CSS pixels from the pad's top-left. */
+      
       readonly x0: number;
       readonly y0: number;
       readonly x1: number;
@@ -98,25 +97,24 @@ type PadEvent =
       readonly strength: number;
     };
 
-/** Everything the simulation keeps between frames, sized to the sample grid. */
 interface Simulation {
   width: number;
   height: number;
-  /** CSS pixels per sample. */
+  
   sampleWidth: number;
   sampleHeight: number;
   ink: Float32Array;
   next: Float32Array;
-  /** Ink colour per sample, as palette weights mixed by diffusion. */
+  
   dye: Float32Array;
   dyeNext: Float32Array;
   wave: Float32Array;
   wavePrevious: Float32Array;
   field: ToneField;
-  /** Seconds of simulation left over from the last frame. */
+  
   carry: number;
   clock: number;
-  /** Seconds of fast fading left after "clear". */
+  
   clearing: number;
   ghost: { x: number; y: number; ink: number; ripple: number } | null;
 }
@@ -152,7 +150,6 @@ const createSimulation = (
   };
 };
 
-/** Lay a soft round dab of ink along a segment, in CSS pixels. */
 const stamp = (
   sim: Simulation,
   event: Extract<PadEvent, { kind: "stroke" }>,
@@ -160,11 +157,11 @@ const stamp = (
 ) => {
   const { width, height, sampleWidth, sampleHeight, ink, dye } = sim;
   const length = Math.hypot(event.x1 - event.x0, event.y1 - event.y0);
-  // Dabs closer than a third of the radius, so fast strokes stay unbroken.
+  
   const dabs = Math.max(1, Math.ceil(length / Math.max(1, radius * 0.33)));
   const sigma = radius * 0.5;
   const reach = radius * 1.4;
-  // Many dabs overlap on a slow stroke, so each one lays down less.
+  
   const flow = event.flow * Math.min(1, 0.45 + length / (radius * 6));
   for (let dab = 0; dab < dabs; dab += 1) {
     const t = dabs === 1 ? 1 : (dab + 1) / dabs;
@@ -187,7 +184,7 @@ const stamp = (
         const before = ink[index] ?? 0;
         const added = (INK_MAX - before) * weight * 0.7;
         ink[index] = before + added;
-        // The new ink tints the sample in proportion to how much it adds.
+        
         const share = added / Math.max(1e-4, before + added);
         dye[index] =
           (dye[index] ?? 0) + (event.ink - (dye[index] ?? 0)) * share;
@@ -196,7 +193,6 @@ const stamp = (
   }
 };
 
-/** Push the water down in a small disc; the wave step turns it into a ring. */
 const splash = (
   sim: Simulation,
   event: Extract<PadEvent, { kind: "ripple" }>,
@@ -228,16 +224,10 @@ const splash = (
   }
 };
 
-/**
- * A slow flow of eddies at a point, in pixels per step before `swirl`.
- * It is the curl of a moving sum of sines, so it turns ink without
- * bunching or thinning it, plus a slight rise, like warm air.
- */
 const eddies = (x: number, y: number, t: number): readonly [number, number] => {
   const a = 0.018;
   const b = 0.041;
-  // Stream function psi = sin(ax + .5t) sin(ay - .4t) + .5 sin(bx - .7t) sin(by + .6t);
-  // velocity is (d psi / dy, -d psi / dx).
+
   const vx =
     Math.sin(a * x + 0.5 * t) * Math.cos(a * y - 0.4 * t) * 60 * a +
     Math.sin(b * x - 0.7 * t) * Math.cos(b * y + 0.6 * t) * 30 * b;
@@ -254,11 +244,6 @@ interface StepOptions {
   readonly swirl: number;
 }
 
-/**
- * One fixed step of ink: it fades, spreads and drifts on a slow curling
- * flow. Spreading uses per-axis weights because samples aren't square (a
- * classic cell is about 0.6 wide for 1 tall), so trails stay round.
- */
 const stepInk = (sim: Simulation, options: StepOptions) => {
   const { width, height, sampleWidth, sampleHeight } = sim;
   const { ink, next, dye, dyeNext } = sim;
@@ -268,15 +253,12 @@ const stepInk = (sim: Simulation, options: StepOptions) => {
   );
   sim.clearing = Math.max(0, sim.clearing - STEP);
 
-  // Diffusion, stable while kx + ky stays under a quarter. Kept well
-  // under it: fast spreading flattens a trail's bright core.
   const spread =
     (clamp(options.diffusion, 0, 1) * 0.12) /
     (1 / sampleWidth ** 2 + 1 / sampleHeight ** 2);
   const kx = spread / sampleWidth ** 2;
   const ky = spread / sampleHeight ** 2;
 
-  // Eddies move at most about a pixel per step at full swirl.
   const drift = clamp(options.swirl, 0, 1) * 0.6;
   const t = sim.clock;
 
@@ -295,8 +277,7 @@ const stepInk = (sim: Simulation, options: StepOptions) => {
       if (drift > 0) {
         const px = (x + 0.5) * sampleWidth;
         const [vx, vy] = eddies(px, py, t);
-        // Back-trace one step along the flow and read the ink there,
-        // blended between the four samples around it.
+
         const sx = clamp(x - (vx * drift) / sampleWidth, 0, width - 1);
         const sy = clamp(y - (vy * drift) / sampleHeight, 0, height - 1);
         const x0 = Math.floor(sx);
@@ -327,10 +308,6 @@ const stepInk = (sim: Simulation, options: StepOptions) => {
   sim.dyeNext = dye;
 };
 
-/**
- * Two substeps of a damped leapfrog wave equation, with per-axis weights
- * so rings stay round on non-square samples. Stable while wx + wy < 0.5.
- */
 const stepWaves = (sim: Simulation) => {
   const { width, height, sampleWidth, sampleHeight } = sim;
   const speed = Math.min(
@@ -355,7 +332,7 @@ const stepWaves = (sim: Simulation) => {
               (current[row + (x < width - 1 ? x + 1 : x)] ?? 0) -
               2 * h) +
           wy * ((current[up + x] ?? 0) + (current[down + x] ?? 0) - 2 * h);
-        // Written over the previous surface, which is no longer needed.
+        
         previous[index] = (2 * h - (previous[index] ?? 0) + lap) * 0.988;
       }
     }
@@ -369,7 +346,6 @@ const advance = (sim: Simulation, options: StepOptions) => {
   stepWaves(sim);
 };
 
-/** Lay queued strokes and splashes into the simulation, then empty the queue. */
 const applyEvents = (
   sim: Simulation,
   queue: PadEvent[],
@@ -389,10 +365,6 @@ const applyEvents = (
   queue.length = 0;
 };
 
-/**
- * Tones: the ink, seen through the water. The surface slope shifts which
- * sample shows, so ripples bend the trails, and crests glint.
- */
 const shadeTones = (sim: Simulation) => {
   const { width, height, ink, wave, field } = sim;
   const { tones } = field;
@@ -408,7 +380,7 @@ const shadeTones = (sim: Simulation) => {
       const slopeY = (wave[below + x] ?? 0) - (wave[above + x] ?? 0);
       const sx = clamp(Math.round(x + slopeX * 6), 0, width - 1);
       const sy = clamp(Math.round(y + slopeY * 6), 0, height - 1);
-      // A soft knee: thin ink still glows, and the faintest wisps drop out.
+      
       const glow = 1 - Math.exp(-2.4 * (ink[sy * width + sx] ?? 0));
       const seen = Math.max(0, (glow - 0.06) / 0.94);
       const crest = Math.max(0, (wave[index] ?? 0) * 1.4);
@@ -417,13 +389,11 @@ const shadeTones = (sim: Simulation) => {
   }
 };
 
-/** Where the ghost brush is at time `t`, as a fraction of the pad. */
 const ghostPath = (t: number): readonly [number, number] => [
   0.5 + 0.36 * Math.sin(t * 0.53 + 0.4) + 0.08 * Math.sin(t * 1.9),
   0.5 + 0.3 * Math.sin(t * 0.79 + 1.1) + 0.07 * Math.cos(t * 2.3),
 ];
 
-/** Move the ghost brush one step and queue what it paints. */
 const moveGhost = (
   sim: Simulation,
   queue: PadEvent[],
@@ -436,7 +406,7 @@ const moveGhost = (
   const x = u * box.width;
   const y = v * box.height;
   const ghost = sim.ghost ?? { ink: 0, ripple: 1.2, x, y };
-  // A new colour every few seconds, so a palette shows itself while idle.
+  
   const ink = Math.floor(t / 3.2) % Math.max(1, inkCount);
   queue.push({
     flow: 0.55,
@@ -455,11 +425,6 @@ const moveGhost = (
   sim.ghost = { ...ghost, ink, x, y };
 };
 
-/**
- * Per-cell colour: the strokes' inks mixed by how much of each landed
- * there, and an alpha that follows the cell's brightest sample, so faint
- * tails glow dimmer than the cores instead of only thinning out.
- */
 const paintColors = (
   colors: Uint8ClampedArray | null,
   sim: Simulation,
@@ -489,7 +454,7 @@ const paintColors = (
           mix += (dye[index] ?? 0) * amount;
         }
       }
-      // Dye is a position along the palette, so two inks blend through it.
+      
       const along = weight > 1e-3 ? mix / weight : 0;
       const low = Math.floor(along);
       const blend = along - low;
@@ -506,12 +471,6 @@ const paintColors = (
   }
 };
 
-/**
- * An interactive glyph pad. The pointer paints ink into a tone grid that
- * spreads, curls and fades, so drags leave glowing trails of glyphs and
- * clicks send ripples that bend them. Works with mouse, pen and touch.
- */
-// oxlint-disable-next-line complexity -- each prop default counts as a branch.
 export const AsciiCanvas = ({
   charset = "standard",
   chars,
@@ -552,7 +511,7 @@ export const AsciiCanvas = ({
   const colors = useAsciiColors(rootRef, inks);
   const [touched, setTouched] = useState(false);
   const [status, setStatus] = useState("");
-  // Under reduced motion nothing loops, so each stroke asks for one redraw.
+  
   const [, setRedraw] = useState(0);
   const redrawQueued = useRef(false);
   const requestRedraw = () => {
@@ -590,7 +549,7 @@ export const AsciiCanvas = ({
     ) {
       sim = createSimulation(columns, rows, resolved, metrics);
       simRef.current = sim;
-      // Paint a stroke before the first frame so the pad opens mid-gesture.
+      
       const warm: PadEvent[] = [];
       for (let tick = 0; tick < WARM_UP / STEP; tick += 1) {
         moveGhost(sim, warm, box, inks.length, ripples && moving);
@@ -615,7 +574,7 @@ export const AsciiCanvas = ({
       applyEvents(sim, queue, brush);
       advance(sim, step);
     }
-    // Still frames (reduced motion, animate off) take strokes but not splashes.
+    
     applyEvents(sim, queue, { ...brush, ripples: ripples && moving });
     shadeTones(sim);
 
@@ -633,8 +592,6 @@ export const AsciiCanvas = ({
     );
     paintColors(frame.colors, sim, columns, rows, resolved, colors);
   };
-
-  /* Input -------------------------------------------------------------- */
 
   const locate = (event: { clientX: number; clientY: number }) => {
     const box = rootRef.current?.getBoundingClientRect();
@@ -654,19 +611,17 @@ export const AsciiCanvas = ({
     if (event.button !== 0 && event.pointerType === "mouse") {
       return;
     }
-    // A press on the clear button is not a brush stroke.
+    
     if (event.target instanceof Element && event.target.closest("button")) {
       return;
     }
-    // Capture keeps the drag going past the edge. It throws if the pointer
-    // is already gone (a very short tap), and the gesture works without it.
+
     try {
       event.currentTarget.setPointerCapture(event.pointerId);
     } catch {
-      // Nothing to capture.
+      
     }
-    // The mousedown is cancelled below so a drag never selects page text;
-    // that also skips the browser's focus, so take it here.
+
     event.currentTarget.focus({ preventScroll: true });
     const pointer = pointerRef.current;
     const { x, y } = locate(event);
@@ -693,14 +648,13 @@ export const AsciiCanvas = ({
 
   const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
     const pointer = pointerRef.current;
-    // A mouse paints faintly just by moving; touch and pen paint while down.
-    // Hover ink only makes sense while it fades, and never under the button.
+
     const overButton =
       event.target instanceof Element && event.target.closest("button");
     const hovering =
       moving && !pointer.down && !overButton && event.pointerType === "mouse";
     if (!(pointer.down || hovering)) {
-      // Start the next hover stroke fresh rather than joining it to this spot.
+      
       pointer.x = Number.NaN;
       pointer.y = Number.NaN;
       return;
@@ -738,7 +692,6 @@ export const AsciiCanvas = ({
     }
   };
 
-  // Keyboard: arrows move a brush from the centre, space or enter splash.
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const box = rootRef.current?.getBoundingClientRect();
     if (!box || event.target !== event.currentTarget) {
@@ -793,7 +746,7 @@ export const AsciiCanvas = ({
     const sim = simRef.current;
     if (sim) {
       if (moving) {
-        // Evaporate quickly rather than vanish, so the clear reads as motion.
+        
         sim.clearing = 0.45;
       } else {
         sim.ink.fill(0);
@@ -821,7 +774,7 @@ export const AsciiCanvas = ({
       role="application"
       aria-roledescription="glyph pad"
       aria-label={ariaLabel}
-      // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- the pad takes arrow keys and space, so it needs focus.
+      
       tabIndex={0}
       className={cn(
         "group/pad relative cursor-crosshair touch-none overflow-hidden outline-none select-none focus-visible:ring-2 focus-visible:ring-ring",

@@ -1,13 +1,5 @@
 export type Rgb8 = readonly [number, number, number];
 
-/**
- * How glyphs are coloured.
- * - `mono`: one ink colour for every glyph (a phosphor, a theme colour).
- * - `truecolor`: each glyph takes the source colour under its cell, graded.
- * - `ansi16`: the source colour snapped to the nearest of 16 ANSI colours.
- * - `duotone`: the cell's tone read through a multi-stop ramp.
- * - `palette`: the field's own `palette` prop, paper to ink, by tone.
- */
 export const COLOR_MODES = [
   "mono",
   "truecolor",
@@ -17,7 +9,6 @@ export const COLOR_MODES = [
 ] as const;
 export type ColorMode = (typeof COLOR_MODES)[number];
 
-/** Monochrome CRT presets: an ink and the near-black glass behind it. */
 export const PHOSPHORS = {
   blueprint: { ink: "#38bdf8", label: "Blueprint cyan", paper: "#020a12" },
   ibm: { ink: "#f4f4f5", label: "IBM white", paper: "#09090b" },
@@ -36,11 +27,6 @@ export const PHOSPHOR_NAMES = [
   "blueprint",
 ] as const satisfies readonly PhosphorName[];
 
-/**
- * The 16 ANSI colours in SGR order: black, red, green, yellow, blue,
- * magenta, cyan, white, then the bright eight. `vga` is the IBM PC text
- * mode palette, brown #aa5500 included; `xterm` is xterm's default.
- */
 export const ANSI16 = {
   vga: [
     [0, 0, 0],
@@ -82,18 +68,12 @@ export const ANSI16 = {
 
 export type Ansi16Name = keyof typeof ANSI16;
 
-/** SGR foreground code for ANSI index 0-15: 30-37, then 90-97. */
 export const ansiForeground = (index: number): number =>
   index < 8 ? 30 + index : 82 + index;
 
-/** SGR background code for ANSI index 0-15: 40-47, then 100-107. */
 export const ansiBackground = (index: number): number =>
   index < 8 ? 40 + index : 92 + index;
 
-/**
- * Multi-stop ramps for `duotone`, dark to light. Each runs from a colour
- * that sits on near-black to one that holds up as the densest glyph.
- */
 export const RAMPS = {
   ember: ["#0a0201", "#4a0b02", "#a82a04", "#f07b12", "#ffd35c", "#fff6d8"],
   glacier: ["#010a0d", "#06323d", "#0f6d7a", "#41b5b8", "#a7ece0", "#f0fffb"],
@@ -121,7 +101,6 @@ export const RAMP_NAMES = [
   "vapor",
 ] as const satisfies readonly RampName[];
 
-/** `#rrggbb` (or `#rgb`) as bytes; anything else is black. */
 export const hexToRgb = (hex: string): Rgb8 => {
   const value = hex.trim().replace(/^#/u, "");
   const full =
@@ -138,7 +117,6 @@ export const hexToRgb = (hex: string): Rgb8 => {
 export const rgbToHex = ([r, g, b]: Rgb8): string =>
   `#${[r, g, b].map((channel) => Math.round(channel).toString(16).padStart(2, "0")).join("")}`;
 
-/** The colour at `t` in [0, 1] along evenly spaced stops, as bytes. */
 export const sampleRamp = (stops: readonly Rgb8[], t: number): Rgb8 => {
   if (stops.length === 0) {
     return [0, 0, 0];
@@ -156,24 +134,19 @@ export const sampleRamp = (stops: readonly Rgb8[], t: number): Rgb8 => {
   ];
 };
 
-/** Tone grading, applied before a tone picks its glyph. */
 export interface Grade {
-  /** Added after contrast, -1 to 1. Default 0. */
+  
   brightness?: number;
-  /** Multiplier around mid grey; 1 leaves tones alone. Default 1. */
+  
   contrast?: number;
-  /** Above 1 lifts the midtones, below 1 sinks them. Default 1. */
+  
   gamma?: number;
-  /** Colour saturation for `truecolor`: 0 is grey, 1 unchanged. Default 1. */
+  
   saturation?: number;
 }
 
 const clamp01 = (value: number) => (value > 0 ? Math.min(value, 1) : 0);
 
-/**
- * A tone through `grade`: contrast around 0.5, then brightness, then
- * gamma, clamped to [0, 1]. NaN becomes 0.
- */
 export const gradeTone = (
   tone: number,
   { brightness = 0, contrast = 1, gamma = 1 }: Grade = {}
@@ -182,14 +155,9 @@ export const gradeTone = (
   return gamma === 1 ? shaped : shaped ** (1 / Math.max(0.01, gamma));
 };
 
-/** Rec. 709 luma of sRGB bytes, 0 to 1. */
 export const luma = (r: number, g: number, b: number): number =>
   (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
 
-/**
- * A colour through `grade`: the same tone curve on each channel, then
- * saturation around its luma. Returns bytes.
- */
 export const gradeRgb = (rgb: Rgb8, grade: Grade = {}): Rgb8 => {
   const { saturation = 1 } = grade;
   const curved = rgb.map(
@@ -209,7 +177,6 @@ const toLinear = (channel: number) => {
   return c <= 0.040_45 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
 };
 
-/** sRGB bytes to OKLab [L, a, b]. */
 export const rgbToOklab = ([r, g, b]: Rgb8): readonly [
   number,
   number,
@@ -239,10 +206,6 @@ const labCache = new WeakMap<
   readonly (readonly [number, number, number])[]
 >();
 
-/**
- * The index of the palette colour nearest `rgb`, measured in OKLab so the
- * match follows what the eye sees rather than raw channel distance.
- */
 export const nearestIndex = (rgb: Rgb8, palette: readonly Rgb8[]): number => {
   let labs = labCache.get(palette);
   if (!labs) {

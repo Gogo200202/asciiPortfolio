@@ -19,12 +19,6 @@ const getProbe = () => {
   return probe;
 };
 
-/**
- * Resolve a colour to sRGB. CSS variables resolve in the context of `el`
- * (the document root by default), so scoped overrides apply. Any format
- * the browser understands works, including oklch, because the colour is
- * painted into a 1x1 canvas and read back.
- */
 export const resolveColor = (value: AsciiColor, el?: Element | null): Rgba => {
   const host = el ?? document.documentElement;
   const span = document.createElement("span");
@@ -45,16 +39,8 @@ export const resolveColor = (value: AsciiColor, el?: Element | null): Rgba => {
   return [r / 255, g / 255, b / 255, a / 255];
 };
 
-/**
- * The glyph cell height in CSS pixels, read from `--ascii-cell` on `el`.
- * The same as `readCell`; kept under its older name.
- */
 export const readAsciiCell = (el?: Element | null): number => readCell(el);
 
-/**
- * Glow strength for the theme, 0 to 1: `--ascii-glow` on `el`, then the
- * older `--ascii-bloom`, then 1.
- */
 export const readGlow = (el?: Element | null): number => {
   if (typeof document === "undefined") {
     return 1;
@@ -72,12 +58,6 @@ export const readGlow = (el?: Element | null): number => {
 const themeListeners = new Set<() => void>();
 let themeObserver: MutationObserver | null = null;
 
-/**
- * Call `listener` whenever the class, style, `data-theme` or `data-palette`
- * of `<html>` changes, which is how next-themes, most theme switchers and
- * the asciicn palette switcher swap colours. One observer is shared by
- * every subscriber. Returns the unsubscribe function.
- */
 export const subscribeToTheme = (listener: () => void): (() => void) => {
   themeListeners.add(listener);
   if (!themeObserver) {
@@ -106,15 +86,6 @@ type ResolvedColors<Names extends readonly AsciiColor[]> = {
   readonly [Index in keyof Names]: Rgba;
 };
 
-/**
- * Resolve a list of colours (CSS variable names by default) and re-resolve
- * them when the site theme changes. Returns `null` until mounted.
- *
- * ```ts
- * const colors = useAsciiColors(ref);
- * if (colors) { const [ink, paper] = colors; }
- * ```
- */
 export function useAsciiColors(
   el?: RefObject<Element | null>
 ): ResolvedColors<typeof DEFAULT_NAMES> | null;

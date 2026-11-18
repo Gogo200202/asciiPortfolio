@@ -5,7 +5,7 @@ import {
 } from "@/lib/ascii/charsets";
 
 export type GlyphPrimitive =
-  /** A filled rectangle. */
+  
   | {
       readonly kind: "rect";
       readonly x: number;
@@ -13,14 +13,14 @@ export type GlyphPrimitive =
       readonly w: number;
       readonly h: number;
     }
-  /** A filled circle; `r` is in cell widths. */
+  
   | {
       readonly kind: "dot";
       readonly cx: number;
       readonly cy: number;
       readonly r: number;
     }
-  /** A straight stroke with flat ends; `weight` is in cell widths. */
+  
   | {
       readonly kind: "line";
       readonly x1: number;
@@ -29,10 +29,7 @@ export type GlyphPrimitive =
       readonly y2: number;
       readonly weight: number;
     }
-  /**
-   * A stroked quarter ellipse centred on (cx, cy) from angle `from` to
-   * `to` (radians, y down), for rounded box corners.
-   */
+  
   | {
       readonly kind: "arc";
       readonly cx: number;
@@ -46,13 +43,8 @@ export type GlyphPrimitive =
 
 export type GlyphShape = readonly GlyphPrimitive[];
 
-/**
- * Cell width over height: a 0.6em advance over a 1.2em line. Only used to
- * keep double lines and stroke joins even; shapes stretch to any cell.
- */
 const ASPECT = 0.5;
 
-/** Stroke weights in cell widths: box-drawing light, heavy and the double gap. */
 export const GLYPH_WEIGHTS = { heavy: 0.26, light: 0.13 } as const;
 
 const rect = (x: number, y: number, w: number, h: number): GlyphPrimitive => ({
@@ -84,7 +76,6 @@ const define = (glyph: string, shape: GlyphShape) => shapes.set(glyph, shape);
 define(" ", []);
 define("█", [rect(0, 0, 1, 1)]);
 
-// Eighth blocks: from the bottom (bars, sparklines) and from the left (progress).
 for (const [index, glyph] of [..."▁▂▃▄▅▆▇"].entries()) {
   const share = (index + 1) / 8;
   define(glyph, [rect(0, 1 - share, 1, share)]);
@@ -97,7 +88,6 @@ define("▔", [rect(0, 0, 1, 0.125)]);
 define("▐", [rect(0.5, 0, 0.5, 1)]);
 define("▕", [rect(0.875, 0, 0.125, 1)]);
 
-// Quadrants: one rectangle per set bit (top-left 1, top-right 2, bottom-left 4, bottom-right 8).
 for (const [mask, glyph] of QUADRANT_GLYPHS.entries()) {
   if (mask === 0 || mask === 15 || shapes.has(glyph)) {
     continue;
@@ -111,12 +101,6 @@ for (const [mask, glyph] of QUADRANT_GLYPHS.entries()) {
   define(glyph, parts);
 }
 
-/**
- * Shades on a 2x4 sub-grid, the way terminal fonts draw them: a quarter of
- * the squares, half (a checkerboard) and three quarters. The pattern
- * continues across neighbouring cells, so a run of shades reads as one
- * even tone.
- */
 const shade = (lit: (x: number, y: number) => boolean): GlyphShape => {
   const parts: GlyphPrimitive[] = [];
   for (let y = 0; y < 4; y += 1) {
@@ -141,7 +125,6 @@ define(
   shade((x, y) => !((y === 1 && x === 1) || (y === 3 && x === 0)))
 );
 
-// Braille: 2x4 dots, the same positions for all 255 patterns.
 const BRAILLE_RADIUS = 0.17;
 for (let mask = 1; mask < 256; mask += 1) {
   const parts: GlyphPrimitive[] = [];
@@ -158,22 +141,16 @@ for (let mask = 1; mask < 256; mask += 1) {
 }
 define(String.fromCodePoint(BRAILLE_BASE), []);
 
-// Halftone dots, smallest to largest.
 define("·", [dot(0.5, 0.5, 0.07)]);
 define("∙", [dot(0.5, 0.5, 0.13)]);
 define("•", [dot(0.5, 0.5, 0.24)]);
 define("⦁", [dot(0.5, 0.5, 0.33)]);
 define("●", [dot(0.5, 0.5, 0.42)]);
 
-// Diagonals run corner to corner, so they join into continuous lines.
 define("╱", [line(0, 1, 1, 0)]);
 define("╲", [line(0, 0, 1, 1)]);
 define("╳", [line(0, 1, 1, 0), line(0, 0, 1, 1)]);
 
-/**
- * Box drawing. Each glyph is up to four arms from the centre (up, right,
- * down, left) at a weight: light, heavy or double.
- */
 type Arm = "l" | "h" | "d" | null;
 const arms = (
   glyph: string,
@@ -184,7 +161,7 @@ const arms = (
 ): void => {
   const parts: GlyphPrimitive[] = [];
   const gap = GLYPH_WEIGHTS.light * 1.2;
-  // Arms are rectangles that overlap at the centre, so joins stay square.
+  
   const vertical = (kind: Arm, from: number, to: number) => {
     if (kind === null) {
       return;
@@ -203,7 +180,7 @@ const arms = (
     if (kind === null) {
       return;
     }
-    // A double line's gap is in cell widths; across the height it is smaller.
+    
     if (kind === "d") {
       for (const offset of [-gap * ASPECT, gap * ASPECT]) {
         parts.push(line(from, 0.5 + offset, to, 0.5 + offset));
@@ -214,7 +191,7 @@ const arms = (
       line(from, 0.5, to, 0.5, kind === "h" ? GLYPH_WEIGHTS.heavy : undefined)
     );
   };
-  // Extend each arm past the centre by half a stroke so corners close.
+  
   const reach = GLYPH_WEIGHTS.heavy / 2;
   vertical(up, 0, 0.5 + reach * ASPECT);
   vertical(down, 0.5 - reach * ASPECT, 1);
@@ -249,7 +226,6 @@ arms("═", null, "d", null, "d");
 arms("║", "d", null, "d", null);
 arms("╬", "d", "d", "d", "d");
 
-// Double corners and tees: draw both strokes and let them cross.
 for (const [glyph, up, right, down, left] of [
   ["╔", null, "d", "d", null],
   ["╗", null, null, "d", "d"],
@@ -263,7 +239,6 @@ for (const [glyph, up, right, down, left] of [
   arms(glyph, up, right, down, left);
 }
 
-// Rounded corners: a quarter ellipse from the middle of one side to the next.
 const corner = (
   glyph: string,
   cx: number,
@@ -288,12 +263,6 @@ corner("╮", 0, 1, Math.PI * 1.5, Math.PI * 2);
 corner("╰", 1, 0, Math.PI * 0.5, Math.PI);
 corner("╯", 0, 0, 0, Math.PI * 0.5);
 
-/**
- * ASCII drawn as strokes, for fills only: `. : - = + * # / \ | x o`.
- * Renderers draw these with the page font; CSS masks can't load page
- * fonts, so the fill kit draws them from strokes and stays the same on
- * every system.
- */
 const strokes = new Map<string, GlyphShape>();
 const ascii = (glyph: string, shape: GlyphShape) => strokes.set(glyph, shape);
 ascii(".", [dot(0.5, 0.78, 0.12)]);
@@ -330,24 +299,14 @@ ascii("/", [line(0.18, 0.88, 0.82, 0.12)]);
 ascii("\\", [line(0.18, 0.12, 0.82, 0.88)]);
 ascii("|", [line(0.5, 0.08, 0.5, 0.92)]);
 
-/**
- * The shape of a geometric glyph, or `undefined` for glyphs a font should
- * draw (letters, digits, punctuation, katakana). Renderers use this.
- */
 export const glyphShape = (glyph: string): GlyphShape | undefined =>
   shapes.get(glyph);
 
-/** True when renderers draw `glyph` from geometry rather than a font. */
 export const isGeometricGlyph = (glyph: string): boolean => shapes.has(glyph);
 
-/**
- * The shape the fill kit draws for `glyph`: the geometric set plus ASCII
- * strokes (`. : - = + * # / \ | x o`). `undefined` means it needs a font.
- */
 export const fillGlyphShape = (glyph: string): GlyphShape | undefined =>
   shapes.get(glyph) ?? strokes.get(glyph);
 
-/** Every glyph the fill kit can draw without a font. */
 export const FILL_GLYPHS: readonly string[] = [
   ...shapes.keys(),
   ...strokes.keys(),
@@ -357,8 +316,6 @@ type Point = readonly [number, number];
 
 const round = (value: number) => Math.round(value * 100) / 100;
 
-// A closed polygon, always wound clockwise (on screen), so overlapping
-// parts of a glyph union under the nonzero fill rule instead of cancelling.
 const polygon = (points: readonly Point[]): string => {
   let area = 0;
   for (const [index, [x1, y1]] of points.entries()) {
@@ -371,7 +328,6 @@ const polygon = (points: readonly Point[]): string => {
     .join("")}Z`;
 };
 
-/** A box in user units that a glyph is drawn into. */
 export interface GlyphBox {
   readonly x: number;
   readonly y: number;
@@ -381,10 +337,6 @@ export interface GlyphBox {
 
 const ARC_STEPS = 10;
 
-/**
- * SVG path data for a shape drawn into `box`, filled only (strokes become
- * outlines). One path per glyph or per tile keeps masks and patterns small.
- */
 export const shapePath = (shape: GlyphShape, box: GlyphBox): string => {
   const { x, y, width, height } = box;
   const px = (u: number) => x + u * width;
@@ -443,13 +395,11 @@ export const shapePath = (shape: GlyphShape, box: GlyphBox): string => {
   return path;
 };
 
-/** SVG path data for a glyph in `box`, or `""` when it needs a font. */
 export const glyphPath = (glyph: string, box: GlyphBox): string => {
   const shape = fillGlyphShape(glyph);
   return shape === undefined ? "" : shapePath(shape, box);
 };
 
-/** Draw any shape (including fill-only ASCII strokes) into a canvas cell. */
 export const drawShape = (
   context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
   shape: GlyphShape,
@@ -461,7 +411,7 @@ export const drawShape = (
   let path: Path2D | null = null;
   for (const part of shape) {
     if (part.kind === "rect") {
-      // Snap both edges, not the size, so adjacent rectangles share edges.
+      
       const left = Math.round(x + part.x * width);
       const top = Math.round(y + part.y * height);
       const right = Math.round(x + (part.x + part.w) * width);
@@ -491,12 +441,6 @@ export const drawShape = (
   }
 };
 
-/**
- * Draw a geometric glyph on a 2D canvas into the cell at (x, y) of size
- * (width, height) in canvas pixels, with the current `fillStyle`. Block
- * edges snap to whole pixels, so neighbouring cells meet without seams.
- * Returns false (drawing nothing) when the glyph needs a font.
- */
 export const drawGlyph = (
   context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
   glyph: string,

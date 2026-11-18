@@ -42,7 +42,6 @@ export { GLSL_HELPERS } from "@/lib/ascii/glsl";
 
 export type AsciiShaderState = "fallback" | "running" | "paused" | "static";
 
-/** Audio input as `useAudioBands` returns it: each band 0 to 1. */
 export interface AudioInput {
   readonly bass: number;
   readonly mid: number;
@@ -50,15 +49,6 @@ export interface AudioInput {
   readonly level: number;
 }
 
-/**
- * Browsers cap live WebGL contexts (Chrome drops the oldest past 16), so
- * every AsciiShader on the page shares a budget. A shader holds a context
- * only while it is near the viewport. Past the budget, a shader coming on
- * screen takes the context of one just outside the viewport, seen least
- * recently first. It never takes one from a shader still on screen, so
- * scrolling doesn't flip visible shaders between canvas and fallback;
- * it waits instead, and gets the next context freed.
- */
 export const MAX_LIVE_CONTEXTS = 8;
 
 interface ContextSlot {
@@ -107,7 +97,7 @@ const releaseContext = (slot: ContextSlot) => {
     return;
   }
   activate(slot, false);
-  // A freed context goes to the shader that waited longest, on screen first.
+  
   const waiting = [...slots].filter((other) => other.near && !other.active);
   const onScreen = waiting.filter((other) => other.onScreen);
   const next = leastRecent(onScreen.length > 0 ? onScreen : waiting);
@@ -119,7 +109,6 @@ const releaseContext = (slot: ContextSlot) => {
 const hasOnScreenWaiter = () =>
   [...slots].some((other) => other.onScreen && other.near && !other.active);
 
-/** Holds a slot in the shared context budget while `ref` is near the viewport. */
 const useContextSlot = (ref: RefObject<Element | null>): boolean => {
   const [active, setActive] = useState(false);
 
@@ -148,8 +137,7 @@ const useContextSlot = (ref: RefObject<Element | null>): boolean => {
       },
       { rootMargin: "200px" }
     );
-    // Coming on screen can take a context from one that is only nearby, and
-    // leaving the screen hands it to an on-screen shader that is waiting.
+
     const screenObserver = new IntersectionObserver(([entry]) => {
       slot.onScreen = entry?.isIntersecting ?? false;
       if (slot.onScreen && slot.near) {
@@ -164,7 +152,7 @@ const useContextSlot = (ref: RefObject<Element | null>): boolean => {
     return () => {
       nearObserver.disconnect();
       screenObserver.disconnect();
-      // Leave the set first, so the freed context goes to someone else.
+      
       slots.delete(slot);
       releaseContext(slot);
     };
@@ -175,79 +163,46 @@ const useContextSlot = (ref: RefObject<Element | null>): boolean => {
 
 export interface AsciiShaderProps
   extends AsciiLook, Omit<ComponentProps<"div">, "children"> {
-  /**
-   * GLSL (ES 1.00) that defines `float field(vec2 uv, vec2 res, float t)`,
-   * returning the tone in [0, 1] at one sample: 0 is empty, 1 the densest
-   * glyph. `uv` is the sample centre in [0, 1] with y up. `res.y` is the
-   * number of sample rows and `res.x / res.y` the box's true aspect ratio,
-   * so `1.0 / res.y` is one sample row. Braille samples 2x4 per cell and
-   * quadrants 2x2, so don't assume one sample per glyph. `t` is seconds
-   * scaled by `speed`. May define helpers too.
-   */
+  
   field: string;
-  /**
-   * GLSL that defines `colorField(vec2 uv, vec2 res, float t)`, returning
-   * an sRGB colour as `vec3` or `vec4` in [0, 1], with the same arguments
-   * as `field`. Each glyph takes the mean colour of its samples in
-   * `truecolor` and the nearest ANSI colour in `ansi16`. Setting it makes
-   * `truecolor` the default colour mode.
-   */
+  
   colorField?: string;
-  /**
-   * Extra uniforms, declared for you by name: numbers become `float`,
-   * tuples `vec2` to `vec4`. Names must not start with `u_` or `ascii_`.
-   * Changing values never recompiles; adding a name does.
-   */
+  
   uniforms?: AsciiUniforms;
-  /**
-   * Colours from paper to ink. Default `["--ascii-paper", "--ascii-ink"]`.
-   * The first is the paper behind the glyphs; in `palette` mode glyphs are
-   * coloured by tone along the rest (`paletteColor(x)` reads them too).
-   */
+  
   palette?: AsciiPalette;
-  /** Glyph colour in `mono`. Default: the phosphor's ink, else the last palette colour. */
+  
   ink?: AsciiColor;
-  /** Paper behind glyphs. Default: the phosphor's paper, else `palette[0]`. */
+  
   paper?: AsciiColor;
-  /** Glyph cell height in CSS pixels. Default `--ascii-cell`, or 12. */
+  
   cell?: number;
-  /** Time multiplier. Default 1. */
+  
   speed?: number;
-  /**
-   * `false` stops the motion. A shader that never moved draws `stillTime`;
-   * one that was moving holds its current frame. Default `true`.
-   */
+  
   animate?: boolean;
-  /** Frame rate cap. Default 30. */
+  
   fps?: number;
-  /** The moment shown when motion is off or reduced, in field seconds. Default 0. */
+  
   stillTime?: number;
-  /** A number fields read as `u_seed`, for seeded variations. Default 0. */
+  
   seed?: number;
-  /** What the pointer does to the field. Default `"none"`. */
+  
   interaction?: Interaction;
-  /** Audio bands from `useAudioBands`, read by fields as `u_audio`. Default none. */
+  
   audio?: AudioInput | null;
-  /**
-   * Filled with a handle for export: `capture()` returns the glyph grid,
-   * without post effects such as glitch row shifts or curvature.
-   */
+  
   handle?: RefObject<AsciiHandle | null>;
-  /**
-   * Painted until the first WebGL frame, while the shader is far offscreen,
-   * and whenever WebGL2 is unavailable. Default: flat paper.
-   */
+  
   fallback?: ReactNode;
-  /** @deprecated Use `dither`. Mapped to `dither` when that isn't set. */
+  
   matrix?: DitherMatrix;
-  /** @deprecated Tones snap to this many steps before glyph choice, 2 to 256. */
+  
   levels?: number;
 }
 
 const NO_UNIFORMS: AsciiUniforms = {};
 
-// Above this many device pixels the canvas drops to DPR 2: a 1440x900 box
-// at DPR 3 is 11.7M pixels, too many for integrated GPUs at 60fps.
 const PIXEL_BUDGET = 8_300_000;
 
 const CANVAS_CLASS =
@@ -275,7 +230,6 @@ const ANSI_TABLES = Object.fromEntries(
   })
 ) as Record<keyof typeof ANSI16, { rgb: Float32Array; lab: Float32Array }>;
 
-/** `mono` with a phosphor, `truecolor` with a colour field, else `palette`. */
 const defaultColorMode = ({
   phosphor,
   colorField,
@@ -295,7 +249,6 @@ interface Resolved {
   colorKey: string;
 }
 
-/** The charset and colour mode the props ask for, and a key for the colours they need. */
 const resolveLook = (props: {
   charset: AsciiLook["charset"];
   chars: string | undefined;
@@ -335,14 +288,8 @@ const writeRgb = (into: Float32Array, at: number, [r, g, b]: Rgba) => {
 const toCss = ([r, g, b, a]: Rgba) =>
   `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, ${a})`;
 
-/** Stops the fragment shader holds (`u_stops[8]` in glsl.ts). */
 const MAX_STOPS = 8;
 
-/**
- * `stops` cut down to at most `limit`, sampled evenly in t the way
- * `sampleRamp` reads them, so both ends stay exact and tone 1 is still the
- * last stop. Shorter ramps pass through unchanged.
- */
 export const fitStops = (
   stops: readonly Rgba[],
   limit: number = MAX_STOPS
@@ -366,7 +313,6 @@ export const fitStops = (
   });
 };
 
-/** Ramp stops: duotone reads a named or custom ramp, palette the inks. */
 const writeStops = (
   input: FrameInput,
   {
@@ -391,7 +337,7 @@ const writeStops = (
       return [r / 255, g / 255, b / 255, 1];
     });
   }
-  // Longer ramps are resampled, not truncated, so their far end still shows.
+  
   const fitted = fitStops(stops);
   const count = Math.max(1, fitted.length);
   for (let index = 0; index < count; index += 1) {
@@ -400,7 +346,6 @@ const writeStops = (
   input.stopCount = count;
 };
 
-/** `--ascii-glow`, the theme's bloom strength; 0.7 when unset. */
 const readGlow = (root: Element): number => {
   const glow = Number.parseFloat(
     getComputedStyle(root).getPropertyValue("--ascii-glow")
@@ -454,16 +399,6 @@ const writeFx = (input: FrameInput, fx: PostFx | undefined, glow: number) => {
   input.vignette = clamp01(fx?.vignette);
 };
 
-/**
- * A WebGL2 canvas that draws a GLSL `field` as real glyphs: any charset
- * (ramps, Braille 2x4, quadrants, Sobel edges), any colour mode, CRT post
- * effects, pointer interaction and audio input. Glyphs come from an atlas
- * drawn at the exact device size of a cell, so they stay crisp at any DPR.
- * Pauses offscreen and in hidden tabs, holds a still frame under reduced
- * motion, follows the theme, and shows `fallback` without WebGL2 or while
- * far offscreen. `data-state` reports `fallback`, `running`, `paused` or
- * `static`.
- */
 export const AsciiShader = ({
   field,
   colorField,
@@ -503,7 +438,7 @@ export const AsciiShader = ({
   ...props
 }: AsciiShaderProps) => {
   const rootRef = useRef<HTMLDivElement>(null);
-  // The root is ours and the caller's: keep both refs pointing at it.
+  
   const setRoot = (node: HTMLDivElement | null) => {
     rootRef.current = node;
     if (typeof ref === "function") {
@@ -558,7 +493,6 @@ export const AsciiShader = ({
     }
   };
 
-  // Everything a draw reads, kept current without restarting effects.
   const live = useRef({
     audio,
     charset: look.charset,
@@ -636,9 +570,6 @@ export const AsciiShader = ({
     };
   });
 
-  // Once motion has run, turning `animate` off holds the frame on screen
-  // instead of jumping to `stillTime`. A new `stillTime` still applies, and
-  // reduced motion always shows it.
   const reducedMotion = usePrefersReducedMotion();
   const hasRunRef = useRef(false);
   useEffect(() => {
@@ -649,7 +580,7 @@ export const AsciiShader = ({
     (time, delta) => {
       deltaRef.current = delta;
       if (delta > 0) {
-        // Accumulate so a change of `speed` never jumps the motion.
+        
         timeRef.current += delta * live.current.speed;
         hasRunRef.current = true;
       } else if (reducedMotion || !hasRunRef.current) {
@@ -660,8 +591,6 @@ export const AsciiShader = ({
     { enabled: animate, fps, stillTime, target: rootRef }
   );
 
-  // Context, renderer, field program, size, theme and fonts. A fresh canvas
-  // per context, so a released context never has to be restored.
   useEffect(() => {
     const root = rootRef.current;
     if (!(root && hasContext)) {
@@ -675,7 +604,7 @@ export const AsciiShader = ({
       depth: false,
       powerPreference: "low-power",
       premultipliedAlpha: true,
-      // PNG export and video capture read the canvas after the frame.
+      
       preserveDrawingBuffer: true,
       stencil: false,
     });
@@ -726,15 +655,13 @@ export const AsciiShader = ({
       glowRef.current = readGlow(root);
     };
 
-    // Metrics, atlas and grid size: on mount, resize, a new charset or cell.
     const relayout = () => {
       const renderer = rendererRef.current;
       if (!renderer) {
         return;
       }
       const style = getComputedStyle(root);
-      // Layout size, not the painted box, so a scaled parent (a zoom-in
-      // animation, a thumbnail) doesn't shrink the grid.
+
       const width = Number.parseFloat(style.width) || root.offsetWidth;
       const height = Number.parseFloat(style.height) || root.offsetHeight;
       const device = window.devicePixelRatio || 1;
@@ -813,7 +740,7 @@ export const AsciiShader = ({
     };
     let fontFrame = 0;
     const onFontsLoaded = () => {
-      // Let the atlas cache redraw first, then re-measure ramps.
+      
       cancelAnimationFrame(fontFrame);
       fontFrame = requestAnimationFrame(relayout);
     };
@@ -829,7 +756,7 @@ export const AsciiShader = ({
     build();
     const resizeObserver = new ResizeObserver(relayout);
     resizeObserver.observe(root);
-    // Browser zoom and moving to another screen change the DPR, not the box.
+    
     window.addEventListener("resize", relayout);
     const unsubscribe = subscribeToTheme(onThemeChange);
     document.fonts?.addEventListener?.("loadingdone", onFontsLoaded);
@@ -853,7 +780,7 @@ export const AsciiShader = ({
           }
           const braille = live.current.charset.kind === "braille";
           const glyphs = Array.from(cells.slots, (slot) =>
-            // An empty Braille cell is a space, as `mapTones` writes it.
+            
             braille && slot === 0 ? " " : (atlas.glyphs[slot] ?? " ")
           );
           const colors =
@@ -887,11 +814,9 @@ export const AsciiShader = ({
       canvasRef.current = null;
       markFrame(false);
     };
-    // `specs` is described by `specKey`; charset and colours update live.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [field, colorField, specKey, hasContext, handle]);
 
-  // A new charset or cell size re-measures and rebuilds the atlas, no recompile.
   useEffect(() => {
     cellRef.current = cell;
     squareRef.current = square;
@@ -905,12 +830,10 @@ export const AsciiShader = ({
     );
   }, [ditherMatrix]);
 
-  // New colours resolve without recompiling.
   useEffect(() => {
     resolveColorsRef.current?.();
   }, [look.colorKey]);
 
-  // Pointer tracking only while something reads it.
   useEffect(() => {
     const root = rootRef.current;
     if (!(root && tracksPointer)) {
@@ -924,7 +847,6 @@ export const AsciiShader = ({
     };
   }, [tracksPointer]);
 
-  // Props changed while nothing is animating: redraw the held frame.
   useEffect(() => {
     if (loopState !== "running") {
       drawRef.current?.();

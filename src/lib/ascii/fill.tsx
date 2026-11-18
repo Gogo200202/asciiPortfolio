@@ -16,52 +16,40 @@ import type { Bloom, FillEdge, FillName } from "@/lib/ascii/style";
 import { cssColor } from "@/lib/ascii/tokens";
 import type { AsciiColor } from "@/lib/ascii/tokens";
 
-/**
- * SVG and DOM pieces of the fill kit: a glyph pattern for every fill
- * variant and two ways to draw phosphor glow. Server-safe.
- */
-
-/** Where a ramp fill's dense edge sits, in SVG user units. */
 export interface FillRamp {
-  /** The dense side. */
+  
   edge: FillEdge;
-  /** Coordinate of that side: y for `top`/`bottom`, x for `left`/`right`. */
+  
   at: number;
-  /** How far the fade runs from the edge. */
+  
   length: number;
-  /** How far the fill reaches past the edge in total. Default `length`. Past the fade it holds `floor`. */
+  
   extent?: number;
 }
 
 export interface FillPatternProps {
-  /** The id to reference, as in `fill="url(#id)"`. */
+  
   id: string;
-  /** The texture (old names work too). */
+  
   fill: FillName;
-  /** Colour: a palette name or any CSS colour. Default `ink`. */
+  
   color?: AsciiColor;
-  /** Glyph cell height in SVG user units. Default 12. */
+  
   cell?: number;
-  /** Cell width over height. Default 0.5, a monospace cell. */
+  
   aspect?: number;
-  /** Ramp variants: a custom ramp from empty to dense, such as `" .oO@"`. */
+  
   chars?: string;
-  /** Ramp variants: density at the dense edge (or everywhere, without `ramp`), 0 to 1. Default 1. */
+  
   level?: number;
-  /** Ramp variants: density at the far end of the fade. Default 0.06. */
+  
   floor?: number;
-  /** Matrix that mixes neighbouring glyphs between levels. Default `bayer4`. */
+  
   matrix?: DitherMatrix;
-  /** Ramp variants: where the dense edge sits. Without it, the fill is one even `level`. */
+  
   ramp?: FillRamp;
 }
 
-/**
- * An SVG `<pattern>` of glyphs for any fill variant. Place it inside
- * `<defs>` and fill shapes with `url(#id)`. To reuse one ramp at several
- * positions (one per bar), reference it with
- * `<pattern id="b2" href="#id" y={top} />`.
- */
 export const FillPattern = ({
   id,
   fill,
@@ -166,11 +154,6 @@ export interface BloomGroupProps extends ComponentProps<"g"> {
   bloom: Bloom;
 }
 
-/**
- * An SVG group drawn as a phosphor glow: put solid copies of your shapes
- * inside and render it before (under) the real fills. Renders nothing
- * when off.
- */
 export const BloomGroup = ({ bloom, style, ...props }: BloomGroupProps) => {
   const layer = bloomLayerStyle(bloom);
   return layer === undefined ? null : (
@@ -179,15 +162,11 @@ export const BloomGroup = ({ bloom, style, ...props }: BloomGroupProps) => {
 };
 
 export type BloomBoxProps = ComponentProps<"div"> & {
-  /** Glow colour: a palette name or any CSS colour. Default `ink`. */
+  
   color?: AsciiColor;
   bloom: Bloom;
 };
 
-/**
- * A wrapper that glows around whatever it holds, in `color`. A CSS
- * drop-shadow, so the glow hugs each glyph and skips the gaps between.
- */
 export const BloomBox = ({
   color = "ink",
   bloom,

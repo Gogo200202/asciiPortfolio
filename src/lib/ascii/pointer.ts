@@ -1,21 +1,19 @@
 export interface PointerTracker {
-  /** uv x, uv y (y up), presence 0..1 (smoothed). */
+  
   readonly pointer: Float32Array;
-  /** Smoothed velocity in uv per second, y up. */
+  
   readonly velocity: Float32Array;
-  /** uv x, uv y of the last press, then seconds since it. */
+  
   readonly click: Float32Array;
-  /** Advance the smoothing by `delta` seconds. Call once per frame. */
+  
   update(delta: number): void;
-  /** Stop listening. */
+  
   dispose(): void;
 }
 
-// Seconds for the smoothed position and presence to cover ~63% of a jump.
 const FOLLOW = 0.08;
 const FADE = 0.25;
 
-/** Track the pointer over `element`. Browser only. */
 export const trackPointer = (element: Element): PointerTracker => {
   const pointer = new Float32Array([0.5, 0.5, 0]);
   const velocity = new Float32Array(2);
@@ -36,7 +34,7 @@ export const trackPointer = (element: Element): PointerTracker => {
     targetX = x;
     targetY = y;
     if (!seen) {
-      // The first sighting starts at the pointer, not gliding in from the centre.
+      
       seen = true;
       pointer[0] = x;
       pointer[1] = y;

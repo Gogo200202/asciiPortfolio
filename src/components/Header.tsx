@@ -5,9 +5,6 @@ import { Ascii } from "ascii.rest/react";
 
 import * as scramble from "@/lib/scramble";
 
-// The scramble piece is 44 columns wide with its phrase centred. The box
-// below shows the middle 25 columns, so the phrase is as large as the left
-// column allows instead of being squeezed by the empty padding.
 const HEADER_FONT = "clamp(1.25rem, 3.9vw, 3rem)";
 
 function Header() {
@@ -54,11 +51,10 @@ function Header() {
             phrases: [
               "Hi, im Georgi Angelov",
               "This is my portfolio",
-              "I hope you like it",
-              "See you on the flip side",
+              "I hope you like it :)",
             ],
-            // A longer pause between phrases than the stock 1.9s.
-            hold: 3.2,
+            
+            hold: 3,
           }}
         />
       </Box>

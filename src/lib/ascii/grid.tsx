@@ -17,26 +17,25 @@ import { cssColor } from "@/lib/ascii/tokens";
 import type { AsciiColor, Rgba } from "@/lib/ascii/tokens";
 import { cn } from "@/lib/utils";
 
-/** The pointer over a grid, in cell units (fractional), row 0 at the top. */
 export interface GridPointer {
   x: number;
   y: number;
-  /** Over the grid right now. */
+  
   inside: boolean;
-  /** A button or touch is held. */
+  
   down: boolean;
 }
 
 export interface AsciiGridDrawContext {
-  /** The frame to draw into. It is cleared to spaces before every draw. */
+  
   readonly frame: MutableFrame;
   readonly columns: number;
   readonly rows: number;
-  /** Seconds of motion so far, scaled by `speed`; `stillTime` when still. */
+  
   readonly time: number;
-  /** Seconds since the previous draw, 0 for a still frame. */
+  
   readonly delta: number;
-  /** Only tracked when `interactive` is set; otherwise always outside. */
+  
   readonly pointer: Readonly<GridPointer>;
   readonly metrics: CellMetrics;
 }
@@ -47,42 +46,35 @@ export interface AsciiGridProps extends Omit<
   ComponentProps<"div">,
   "children"
 > {
-  /**
-   * Fill `frame` with glyphs (and colours, with `colored`). Called every
-   * frame while animating, once for a still frame, and again on resize.
-   */
+  
   draw: (context: AsciiGridDrawContext) => void;
-  /** Cell height in CSS pixels. Default `--ascii-cell`, or 12. */
+  
   cell?: number;
-  /** Cells as wide as they are tall, for an even lattice of dots. Default `false`. */
+  
   square?: boolean;
-  /** Glyph colour where a cell has none of its own. Default `--ascii-ink`. */
+  
   ink?: AsciiColor;
-  /** Background behind the glyphs. Default `"transparent"`. */
+  
   paper?: AsciiColor | "transparent";
-  /** Give `frame` per-glyph colour. Default `false`. */
+  
   colored?: boolean;
-  /** Time multiplier. Default 1. */
+  
   speed?: number;
-  /** `false` holds a still frame. Default `true`. */
+  
   animate?: boolean;
-  /** Frame rate cap. Default 30. */
+  
   fps?: number;
-  /**
-   * Cap the canvas backing-store pixel ratio. Default the device's, so
-   * glyphs stay sharp. Lower it for large decorative grids: the canvas is
-   * upscaled by the browser, trading a little softness for frame rate.
-   */
+  
   dpr?: number;
-  /** The moment drawn when motion is off or reduced, in seconds. Default 0. */
+  
   stillTime?: number;
-  /** Track the pointer for `context.pointer`. Default `false`. */
+  
   interactive?: boolean;
-  /** Shown until the first frame. Default: nothing. */
+  
   fallback?: ReactNode;
-  /** Filled with a handle for export: the latest frame and the canvas. */
+  
   handle?: RefObject<AsciiHandle | null>;
-  /** CRT effects, drawn as a CSS overlay (`CrtOverlay`). Default: none. */
+  
   fx?: PostFx;
 }
 
@@ -91,14 +83,6 @@ const CANVAS_CLASS = "absolute top-0 left-0 block";
 const toCss = ([r, g, b, a]: Rgba) =>
   `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, ${a})`;
 
-/**
- * A grid of glyphs drawn by a function you write, painted on a canvas at
- * device resolution from the shared glyph atlas (one tint pass colours
- * every glyph, however many colours the frame uses). For anything computed on the CPU: 3D scenes,
- * simulations, terminal panels, sampled images. Pauses offscreen and in
- * hidden tabs, holds a still frame under reduced motion and follows the
- * theme. `data-state` reports `fallback`, `running`, `paused` or `static`.
- */
 export const AsciiGrid = ({
   draw,
   cell,
@@ -193,7 +177,6 @@ export const AsciiGrid = ({
     { enabled: animate, fps, stillTime, target: rootRef }
   );
 
-  // Canvas, size, theme and fonts.
   useEffect(() => {
     const root = rootRef.current;
     if (!root) {
@@ -214,7 +197,7 @@ export const AsciiGrid = ({
     const resize = () => {
       const metrics = measureCell({
         cell: cell ?? readCell(root),
-        // Never above the device's own ratio; the cap only lowers it.
+        
         dpr:
           dpr === undefined
             ? undefined
@@ -239,9 +222,6 @@ export const AsciiGrid = ({
       paintRef.current();
     };
 
-    // A fixed-size grid moved to a screen with another pixel ratio gets no
-    // ResizeObserver call, so watch the ratio too. Each query matches one
-    // ratio only, so it is re-armed for the new ratio after every change.
     const dprWatch = new AbortController();
     const watchDpr = () => {
       const query = window.matchMedia(
@@ -275,7 +255,6 @@ export const AsciiGrid = ({
     };
   }, [cell, square, ink, paper, dpr]);
 
-  // Pointer, in cell units.
   useEffect(() => {
     const root = rootRef.current;
     if (!(root && interactive)) {
@@ -315,7 +294,6 @@ export const AsciiGrid = ({
     };
   }, [interactive]);
 
-  // Export handle.
   useEffect(() => {
     if (!handle) {
       return;
@@ -345,7 +323,6 @@ export const AsciiGrid = ({
     };
   }, [handle]);
 
-  // Props changed while nothing animates: redraw the held frame.
   useEffect(() => {
     if (loopState !== "running") {
       paintRef.current();

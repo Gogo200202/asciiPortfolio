@@ -6,28 +6,19 @@ import { AsciiReveal } from "@/components/asciicn/ascii-reveal";
 import { rippleBackground } from "@/lib/background-ripple";
 import { usePrefersReducedMotion } from "@/lib/ascii";
 
-// How long each end of the loop holds before the sweep turns around.
 const HOLD_GLYPHS_MS = 1400;
 const HOLD_PHOTO_MS = 2600;
-// One full hand-over sweep: long enough to read, short enough to loop.
+
 const SWEEP_MS = 2200;
 
-// Vite serves the app from a base path, so build the URL from it.
 const PORTRAIT = `${import.meta.env.BASE_URL}img/me.png`;
-// public/img/me.png is 1080 x 1030.
+
 const PORTRAIT_RATIO = 1080 / 1030;
 
-/**
- * A portrait that keeps resolving between ASCII glyphs and the photo.
- *
- * The loop is driven by `trigger="manual"`: it alternates `revealed` and
- * holds at each end, so the page always starts as glyphs. Under reduced
- * motion it never sweeps and stays on the glyphs.
- */
 export function MyInAscii() {
   const reducedMotion = usePrefersReducedMotion();
   const rootRef = useRef<HTMLDivElement>(null);
-  // Odd steps show the photo. Step 0 is the first, glyphs-only hold.
+  
   const [step, setStep] = useState(0);
   const revealed = step % 2 === 1;
   const wasRevealed = useRef(revealed);
@@ -43,8 +34,6 @@ export function MyInAscii() {
     return () => window.clearTimeout(timer);
   }, [reducedMotion, step, revealed]);
 
-  // Splash the backdrop when the portrait starts turning back into glyphs,
-  // the same ripple a click on the background sends.
   useEffect(() => {
     const was = wasRevealed.current;
     wasRevealed.current = revealed;
@@ -82,7 +71,7 @@ export function MyInAscii() {
         ratio={PORTRAIT_RATIO}
         className="w-full"
       />
-      {/* Which end of the loop the sweep is heading for. */}
+      
       <p
         aria-hidden
         className="text-muted-foreground flex gap-2 font-mono text-[11px] select-none"

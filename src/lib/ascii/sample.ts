@@ -7,18 +7,6 @@ import type { Charset, CharsetName } from "@/lib/ascii/charsets";
 import type { ToneField } from "@/lib/ascii/frame";
 import { luma } from "@/lib/ascii/palettes";
 
-/**
- * Turn images, video frames, canvases and webcam streams into tone fields
- * for `mapTones`. Browser only.
- *
- * Downscaling is area-averaged: the source is drawn at a whole multiple
- * of the sample grid (up to 4x) with high-quality smoothing, then every
- * block of pixels is averaged into one sample. A thin line or a fine
- * texture becomes a lighter tone instead of flickering between glyphs as
- * it moves, which is what plain nearest-pixel sampling does.
- */
-
-/** A region of the source in [0, 1] of its width and height. */
 export interface SampleCrop {
   x: number;
   y: number;
@@ -27,27 +15,21 @@ export interface SampleCrop {
 }
 
 export interface SampleOptions {
-  /** Glyph columns. */
+  
   columns: number;
-  /** Glyph rows. */
+  
   rows: number;
-  /** Sets the sample grid per cell (2x4 for Braille). Default `"standard"`. */
+  
   charset?: CharsetName | Charset;
-  /**
-   * How the source fills the box: `cover` crops to fill, `contain` fits
-   * inside (the bars are empty, alpha 0), `fill` stretches. Default `"cover"`.
-   */
+  
   fit?: "cover" | "contain" | "fill";
-  /** Flip left to right, as a webcam preview should be. Default `false`. */
+  
   mirror?: boolean;
-  /** Use only this part of the source. Default: all of it. */
+  
   crop?: SampleCrop;
-  /**
-   * The box's width over height in CSS pixels. Default: the grid of
-   * monospace cells, `columns * 0.5 / rows`.
-   */
+  
   aspect?: number;
-  /** A field to write into when its size matches, to avoid allocating per frame. */
+  
   into?: ToneField;
 }
 
@@ -58,7 +40,6 @@ interface Scratch {
 
 let scratch: Scratch | null = null;
 
-// One scratch canvas for every sampler on the page.
 const getScratch = (): Scratch | null => {
   if (scratch) {
     return scratch;
@@ -75,7 +56,6 @@ const getScratch = (): Scratch | null => {
   return scratch;
 };
 
-/** The intrinsic size of any canvas image source, 0 when not loaded yet. */
 export const sourceSize = (
   source: CanvasImageSource
 ): { width: number; height: number } => {
@@ -97,7 +77,6 @@ export const sourceSize = (
 
 const MAX_SUPERSAMPLE = 4;
 
-/** Where the source is read from (pixels) and where it lands in the box ([0, 1]). */
 interface Placement {
   readonly sx: number;
   readonly sy: number;
@@ -109,7 +88,6 @@ interface Placement {
   readonly dh: number;
 }
 
-/** The source rectangle after crop and fit, and its place in the box. */
 const placeSource = (
   size: { width: number; height: number },
   crop: SampleCrop,
@@ -127,22 +105,17 @@ const placeSource = (
   }
   const wider = sourceAspect > boxAspect;
   if (fit === "cover") {
-    // Crop the long side to the box's shape, keeping the centre.
+    
     return wider
       ? { ...full, sw: sh * boxAspect, sx: sx + (sw - sh * boxAspect) / 2 }
       : { ...full, sh: sw / boxAspect, sy: sy + (sh - sw / boxAspect) / 2 };
   }
-  // Contain: shrink the image inside the box and centre it.
+  
   const dw = wider ? 1 : sourceAspect / boxAspect;
   const dh = wider ? boxAspect / sourceAspect : 1;
   return { ...full, dh, dw, dx: (1 - dw) / 2, dy: (1 - dh) / 2 };
 };
 
-/**
- * Average every k x k block of `data` (pw pixels wide) into one sample.
- * Colour is averaged premultiplied, so transparent pixels don't darken
- * edges; the tone is the luma scaled by coverage.
- */
 const averageBlocks = (
   data: Uint8ClampedArray,
   pw: number,
@@ -184,16 +157,6 @@ const averageBlocks = (
 
 const FULL_CROP: SampleCrop = { height: 1, width: 1, x: 0, y: 0 };
 
-/**
- * Sample a source into a tone field for `columns` x `rows` cells of
- * `charset`: luma as tone (scaled by alpha, so transparent pixels are
- * empty) and the averaged colour of every sample.
- *
- * ```ts
- * const field = sampleToField(video, { columns: 120, rows: 40, charset: "braille" });
- * mapTones(field, 120, 40, { charset: "braille", colorMode: "truecolor" }, frame);
- * ```
- */
 export const sampleToField = (
   source: CanvasImageSource,
   {
@@ -232,7 +195,7 @@ export const sampleToField = (
     fit,
     aspect ?? (columns * 0.5) / Math.max(1, rows)
   );
-  // Supersample at a whole multiple so each sample averages a k x k block.
+  
   const k = Math.max(
     1,
     Math.min(
@@ -271,12 +234,6 @@ export const sampleToField = (
   return field;
 };
 
-/**
- * Stretch a field's tones so the darkest `clipPercent` of samples maps to
- * 0 and the brightest to 1, like a photo editor's auto levels. Flat or
- * low-contrast sources then use the whole glyph ramp. Works in place and
- * returns the field. Transparent samples are left out of the histogram.
- */
 export const autoLevels = (field: ToneField, clipPercent = 0.5): ToneField => {
   const { tones, colors } = field;
   const bins = new Uint32Array(256);
@@ -321,24 +278,23 @@ export const autoLevels = (field: ToneField, clipPercent = 0.5): ToneField => {
   return field;
 };
 
-/** Anything `useMediaElement` can load. */
 export type MediaSource = string | Blob | MediaStream | null;
 
 export interface MediaElementState {
-  /** The loaded image or video, or `null` while loading (or with no source). */
+  
   element: HTMLImageElement | HTMLVideoElement | null;
-  /** What the element is. */
+  
   kind: "image" | "video" | null;
-  /** Set when the source failed to load. */
+  
   error: Error | null;
 }
 
 export interface MediaElementOptions {
-  /** Treat a URL as this kind instead of guessing from its extension. */
+  
   kind?: "image" | "video";
-  /** Video: loop. Default `true`. */
+  
   loop?: boolean;
-  /** CORS mode for URLs. Default `"anonymous"`, so frames can be read back. */
+  
   crossOrigin?: "anonymous" | "use-credentials";
 }
 
@@ -348,9 +304,9 @@ const isStream = (value: MediaSource): value is MediaStream =>
   typeof MediaStream !== "undefined" && value instanceof MediaStream;
 
 interface ResolvedSource {
-  /** The URL to load, or null for a stream. */
+  
   readonly url: string | null;
-  /** An object URL this hook made and must revoke. */
+  
   readonly objectUrl: string | null;
   readonly video: boolean;
 }
@@ -381,7 +337,6 @@ const resolveSource = (
   };
 };
 
-/** A muted, inline, autoplaying video for a stream or URL. */
 const createVideo = (
   source: Exclude<MediaSource, null>,
   { url, objectUrl }: ResolvedSource,
@@ -395,7 +350,7 @@ const createVideo = (
   if (isStream(source)) {
     element.srcObject = source;
   } else if (url !== null) {
-    // Object URLs are same-origin; only remote URLs need CORS.
+    
     if (objectUrl === null) {
       element.crossOrigin = crossOrigin;
     }
@@ -404,7 +359,6 @@ const createVideo = (
   return element;
 };
 
-/** Stop a video and let the browser drop its buffers. */
 const releaseVideo = (video: HTMLVideoElement) => {
   video.pause();
   video.srcObject = null;
@@ -412,16 +366,6 @@ const releaseVideo = (video: HTMLVideoElement) => {
   video.load();
 };
 
-/**
- * Load an image URL, a video URL, a dropped `File` or a webcam
- * `MediaStream` into an element ready for `sampleToField`. Videos play
- * muted, inline and looping. Object URLs are revoked and videos stopped on
- * change and unmount; a stream's tracks stay yours to stop.
- *
- * ```ts
- * const { element } = useMediaElement(file ?? "/examples/portrait.jpg");
- * ```
- */
 export const useMediaElement = (
   source: MediaSource,
   { kind, loop = true, crossOrigin = "anonymous" }: MediaElementOptions = {}
@@ -466,7 +410,7 @@ export const useMediaElement = (
           try {
             await element.play();
           } catch {
-            // Autoplay can be refused; the first frame still samples.
+            
           }
         },
         { once: true }

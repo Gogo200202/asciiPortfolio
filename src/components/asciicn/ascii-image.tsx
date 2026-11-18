@@ -33,20 +33,12 @@ import type {
 } from "@/lib/ascii";
 import { cn } from "@/lib/utils";
 
-/* -------------------------------------------------------------------------- */
-/* Colour: ink, paper and which way tones run                                  */
-/* -------------------------------------------------------------------------- */
-
-/** Ink and paper for a look, and whether dark source pixels draw dense glyphs. */
 export interface GlyphPaint {
   readonly ink: AsciiColor;
   readonly paper: AsciiColor | "transparent";
-  /**
-   * Dense glyphs stand for dark pixels. True on a light page, where ink is
-   * dark, so a photo still reads the right way round.
-   */
+  
   readonly darkIsDense: boolean;
-  /** Paper then ink as bytes, for `colorMode="palette"`. */
+  
   readonly palette: readonly Rgb8[];
 }
 
@@ -66,11 +58,6 @@ const rampPaper = (ramp: AsciiLook["ramp"]): string => {
   return ramp[0] ?? RAMPS.mainframe[0];
 };
 
-/**
- * Ink and paper for a look, following the theme. Phosphors and duotone
- * ramps are screen looks: they bring their own dark glass, whatever the
- * page theme. Everything else draws in `--ascii-ink` on `--ascii-paper`.
- */
 export const useGlyphPaint = (
   ref: RefObject<Element | null>,
   {
@@ -116,11 +103,6 @@ export const useGlyphPaint = (
   };
 };
 
-/**
- * Braille and quadrants light a dot or leave it dark, so without help a
- * soft gradient collapses to one hard edge. Blue-noise ordered dithering
- * keeps the gradient as a stipple; a ramp charset needs none.
- */
 export const packedDither = (
   look: Pick<AsciiLook, "charset" | "chars">
 ): "none" | "blue-noise" => {
@@ -128,11 +110,6 @@ export const packedDither = (
   return kind === "braille" || kind === "quadrants" ? "blue-noise" : "none";
 };
 
-/**
- * The `mapTones` options for a look. Inversion is left to the sampler,
- * which knows which samples are empty (transparent or letterboxed) and
- * must stay empty either way round.
- */
 export const lookToMapOptions = (
   look: AsciiLook,
   paint: GlyphPaint,
@@ -151,10 +128,6 @@ export const lookToMapOptions = (
   threshold: look.threshold,
 });
 
-/**
- * Split the look props from everything else, so a component can hand the
- * look to its renderer and the rest to its wrapper element.
- */
 export const splitLook = <Props extends AsciiLook>({
   charset,
   chars,
@@ -190,21 +163,10 @@ export const splitLook = <Props extends AsciiLook>({
     rest,
   ] as const;
 
-/* -------------------------------------------------------------------------- */
-/* Sampling: any image, video or canvas into a tone field                      */
-/* -------------------------------------------------------------------------- */
-
-/** How media fills its box, as in `object-fit`. */
 export type MediaFit = "cover" | "contain" | "fill";
 
-/**
- * What a sample's tone measures. `luma` suits photos and video; `alpha`
- * suits logos and icons on a transparent background, where the shape is
- * the coverage and colour only tints it.
- */
 export type MediaTone = "luma" | "alpha";
 
-/** Something drawable and its natural size. `key` changes when the content does. */
 export interface MediaInput {
   readonly element: CanvasImageSource;
   readonly width: number;
@@ -216,19 +178,18 @@ export interface MediaSampleOptions {
   readonly columns: number;
   readonly rows: number;
   readonly charset: Charset;
-  /** The grid's width over height in CSS pixels. */
+  
   readonly aspect: number;
   readonly fit: MediaFit;
-  /** Where the media sits when it overflows, 0 to 1 per axis. */
+  
   readonly focus: readonly [number, number];
   readonly mirror: boolean;
   readonly tone: MediaTone;
   readonly darkIsDense: boolean;
-  /** Stretch the darkest and brightest 1% of tones to the ends of the ramp. */
+  
   readonly levels: boolean;
 }
 
-/** The part of the source `cover` keeps, slid towards `focus`. */
 const coverCrop = (
   { width, height }: Pick<MediaInput, "width" | "height">,
   aspect: number,
@@ -243,12 +204,6 @@ const coverCrop = (
   return { height: keep, width: 1, x: 0, y: (1 - keep) * focusY };
 };
 
-/**
- * Sample media into a tone field with the engine's area-averaging
- * sampler, then set which way tones run. Samples outside the media
- * (letterboxing, transparent pixels) stay at tone 0 either way round, so
- * they draw nothing.
- */
 export const sampleMedia = (
   source: MediaInput,
   field: ToneField,
@@ -284,21 +239,11 @@ export const sampleMedia = (
   }
 };
 
-/* -------------------------------------------------------------------------- */
-/* Loading media                                                               */
-/* -------------------------------------------------------------------------- */
-
-/** Where an image is in loading. */
 export type ImageState =
   | { readonly status: "loading" }
   | { readonly status: "ready"; readonly source: MediaInput }
   | { readonly status: "error" };
 
-/**
- * Load and decode an image for sampling. Cross-origin files need CORS
- * headers, or the canvas can't read their pixels. `null` waits, for
- * images that load lazily.
- */
 export const useLoadedImage = (
   src: string | null,
   crossOrigin: ComponentProps<"img">["crossOrigin"] = "anonymous"
@@ -345,14 +290,9 @@ export const useLoadedImage = (
   return state;
 };
 
-/* -------------------------------------------------------------------------- */
-/* AsciiMedia: the shared renderer                                             */
-/* -------------------------------------------------------------------------- */
-
-/** What the `shape` and `finish` hooks of `AsciiMedia` get each frame. */
 export interface MediaDrawContext extends AsciiGridDrawContext {
   readonly charset: Charset;
-  /** The element's size in CSS pixels. */
+  
   readonly box: { readonly width: number; readonly height: number };
 }
 
@@ -360,41 +300,41 @@ export type MediaStatus = "loading" | "ready" | "error";
 
 export interface AsciiMediaProps
   extends AsciiLook, Omit<ComponentProps<"div">, "children"> {
-  /** What to draw, or `null` while it loads. */
+  
   source: MediaInput | null;
-  /** Drawn as a glyph placeholder until `"ready"`. Default `"ready"`. */
+  
   status?: MediaStatus;
-  /** Draw a loading sweep and error text in glyphs. Default `true`. */
+  
   placeholder?: boolean;
-  /** Shown in glyphs when `status` is `"error"`. Default `"image unavailable"`. */
+  
   message?: string;
-  /** Default `"cover"`. */
+  
   fit?: MediaFit;
-  /** Media position when it overflows its box, 0 to 1 per axis. Default centred. */
+  
   focus?: readonly [number, number];
-  /** Flip horizontally, as a webcam preview does. Default `false`. */
+  
   mirror?: boolean;
-  /** Default `"luma"`. */
+  
   tone?: MediaTone;
-  /** Stretch the media's tones to fill the ramp. Default `true`. */
+  
   autoLevels?: boolean;
-  /** Sample the source again every frame, for video. Default `false`. */
+  
   live?: boolean;
-  /** Glyph colour in `mono`, overriding the theme ink and any phosphor. */
+  
   ink?: AsciiColor;
-  /** Colour mode when `colorMode` is unset. Default `"truecolor"`. */
+  
   defaultColorMode?: NonNullable<AsciiLook["colorMode"]>;
-  /** Adjust tones after sampling, before glyphs are chosen. Runs every frame. */
+  
   shape?: (field: ToneField, context: MediaDrawContext) => void;
-  /** Adjust glyphs after mapping. Runs every frame. */
+  
   finish?: (frame: MutableFrame, context: MediaDrawContext) => void;
-  /** Cell height in CSS pixels. Default 10. */
+  
   cell?: number;
-  /** Keep drawing every frame. Default `false`: one frame per change. */
+  
   animate?: boolean;
-  /** Frame rate cap while animating. Default 30. */
+  
   fps?: number;
-  /** Filled with a handle for export. */
+  
   handle?: RefObject<AsciiHandle | null>;
 }
 
@@ -409,7 +349,6 @@ const hash = (x: number, y: number) => {
   return value - Math.floor(value);
 };
 
-/** A sweeping band of faint glyphs and a status line, while media loads. */
 const drawPlaceholder = (
   context: AsciiGridDrawContext,
   status: Exclude<MediaStatus, "ready">,
@@ -446,12 +385,6 @@ const drawPlaceholder = (
 
 const CENTRE = [0.5, 0.5] as const;
 
-/**
- * The renderer behind every media component: samples an image, video or
- * canvas into glyphs on an `AsciiGrid`. Charset and colour switch without
- * sampling again; size, fit and source changes sample once.
- */
-// oxlint-disable-next-line complexity -- each prop default counts as a branch.
 export const AsciiMedia = (props: AsciiMediaProps) => {
   const [
     look,
@@ -587,7 +520,7 @@ export const AsciiMedia = (props: AsciiMediaProps) => {
   if (!look.fx) {
     return grid;
   }
-  // The CRT finish is a CSS layer over the canvas, so it needs a wrapper.
+  
   return (
     <div className={cn("relative", className)} {...rest}>
       {grid}
@@ -596,54 +529,42 @@ export const AsciiMedia = (props: AsciiMediaProps) => {
   );
 };
 
-/* -------------------------------------------------------------------------- */
-/* AsciiImage                                                                  */
-/* -------------------------------------------------------------------------- */
 
-/**
- * What the pointer does over the image.
- * - `none`: nothing.
- * - `spotlight`: glyphs thin out away from the pointer and run full
- *   density under it, like a torch over the page.
- * - `photo`: a soft window around the pointer shows the original photo.
- */
 export const IMAGE_REVEALS = ["none", "spotlight", "photo"] as const;
 export type ImageReveal = (typeof IMAGE_REVEALS)[number];
 
 export interface AsciiImageProps
   extends AsciiLook, Omit<ComponentProps<"div">, "children"> {
-  /** Image URL. Cross-origin files need CORS headers. */
+  
   src: string;
-  /** What the image shows, read by screen readers. `""` marks it decorative. */
+  
   alt: string;
-  /** How the image fills its box. Default `"cover"`. */
+  
   fit?: MediaFit;
-  /** Image position when it overflows, 0 to 1 per axis. Default centred. */
+  
   focus?: readonly [number, number];
-  /** Stretch the image's tones to use the whole ramp. Default `true`. */
+  
   autoLevels?: boolean;
-  /** Pointer effect. Default `"none"`. */
+  
   reveal?: ImageReveal;
-  /** Radius of the reveal in CSS pixels. Default 120. */
+  
   revealRadius?: number;
-  /** Glyphs resolve in from noise once the image loads. Default `true`. */
+  
   intro?: boolean;
-  /** Cell height in CSS pixels. Default 10. */
+  
   cell?: number;
-  /** `false` skips the intro and the loading sweep. Default `true`. */
+  
   animate?: boolean;
-  /** Passed to the image request. Default `"anonymous"`. */
+  
   crossOrigin?: ComponentProps<"img">["crossOrigin"];
-  /** Filled with a handle for export. */
+  
   handle?: RefObject<AsciiHandle | null>;
 }
 
 const INTRO_MS = 900;
 
-// What braille and quadrant cells flicker through while they resolve.
 const SCRAMBLE = [..."⠁⠂⠄⡀⠈⠐⠠⢀·:"];
 
-/** Hide cells that haven't resolved yet and scramble the ones resolving. */
 const resolveIn = (frame: MutableFrame, charset: Charset, progress: number) => {
   const { glyphs, columns } = frame;
   const ramp = charset.kind === "ramp" || charset.kind === "edge";
@@ -651,7 +572,7 @@ const resolveIn = (frame: MutableFrame, charset: Charset, progress: number) => {
   for (let index = 0; index < glyphs.length; index += 1) {
     const column = index % columns;
     const row = (index - column) / columns;
-    // Cells resolve roughly top to bottom, in a ragged order.
+    
     const order = hash(column, row) * 0.7 + (row / frame.rows) * 0.3;
     if (order > progress + 0.12) {
       glyphs[index] = " ";
@@ -668,11 +589,6 @@ const smoothstep = (edge0: number, edge1: number, value: number) => {
   return t * t * (3 - 2 * t);
 };
 
-/**
- * An image redrawn in glyphs, sampled on the CPU: every glyph is the area
- * average of the pixels under its cell. Charset and colour switch live.
- */
-// oxlint-disable-next-line complexity -- each prop default counts as a branch.
 export const AsciiImage = (props: AsciiImageProps) => {
   const [
     look,
@@ -702,7 +618,6 @@ export const AsciiImage = (props: AsciiImageProps) => {
   const [introRunning, setIntroRunning] = useState(false);
   const playIntro = intro && animate && !reducedMotion;
 
-  // Keep the loop running for the length of the intro, then let it rest.
   useEffect(() => {
     if (image.status !== "ready" || !playIntro) {
       setIntroRunning(false);
@@ -748,7 +663,7 @@ export const AsciiImage = (props: AsciiImageProps) => {
 
   const spotlight = (field: ToneField, context: MediaDrawContext) => {
     const state = pointer.current;
-    // Ease the light in and out instead of snapping when the pointer enters.
+    
     const target = state.inside ? 1 : 0;
     const rate = context.delta > 0 ? Math.min(1, context.delta * 6) : 1;
     state.eased += (target - state.eased) * rate;
@@ -779,7 +694,7 @@ export const AsciiImage = (props: AsciiImageProps) => {
     if (!playIntro) {
       return;
     }
-    // The intro clock starts on the first frame drawn from this image.
+    
     if (intro0.current.key !== src) {
       intro0.current = { at: performance.now(), key: src };
     }
@@ -811,7 +726,7 @@ export const AsciiImage = (props: AsciiImageProps) => {
       {...rest}
     >
       {showPhoto ? (
-        // oxlint-disable-next-line nextjs/no-img-element -- the photo under the glyphs must match the sampled file exactly.
+        
         <img
           src={src}
           alt=""

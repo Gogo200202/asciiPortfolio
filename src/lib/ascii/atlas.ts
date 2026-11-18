@@ -9,24 +9,24 @@ import type { GlyphShape } from "@/lib/ascii/glyphs";
 import type { CellMetrics } from "@/lib/ascii/measure";
 
 export interface GlyphAtlas {
-  /** White glyphs on transparent, one slot per glyph. */
+  
   readonly canvas: HTMLCanvasElement;
   readonly metrics: CellMetrics;
-  /** Glyphs in slot order. */
+  
   readonly glyphs: readonly string[];
-  /** Slots per atlas row. */
+  
   readonly columns: number;
-  /** Bumped whenever the canvas changes (a dynamic glyph, a font load). */
+  
   readonly version: number;
-  /** The slot of `glyph`, or -1. A dynamic atlas adds unknown glyphs. */
+  
   slot(glyph: string): number;
-  /** Top-left pixel of a slot in the atlas canvas. */
+  
   slotOrigin(slot: number): readonly [number, number];
-  /** The share of the cell `glyph` inks, 0 to 1. 0 for unknown glyphs. */
+  
   coverage(glyph: string): number;
-  /** The same by slot index, for building GPU lookup tables. */
+  
   slotCoverage(slot: number): number;
-  /** Copy `glyph` into `context` at (x, y), scaled to w by h. */
+  
   drawGlyph(
     context: CanvasRenderingContext2D,
     glyph: string,
@@ -37,9 +37,8 @@ export interface GlyphAtlas {
   ): void;
 }
 
-/** Slots per atlas row; keeps the canvas well under texture size limits. */
 const ATLAS_COLUMNS = 32;
-/** Most atlases kept alive at once; the oldest is dropped past this. */
+
 const CACHE_LIMIT = 24;
 
 const atlasKey = (metrics: CellMetrics, glyphs: readonly string[] | null) =>
@@ -48,7 +47,7 @@ const atlasKey = (metrics: CellMetrics, glyphs: readonly string[] | null) =>
 const cache = new Map<string, AtlasImpl>();
 
 if (typeof document !== "undefined") {
-  // A web font that finishes loading changes how text glyphs look.
+  
   document.fonts?.addEventListener?.("loadingdone", () => {
     for (const atlas of cache.values()) {
       atlas.redraw();
@@ -56,9 +55,6 @@ if (typeof document !== "undefined") {
   });
 }
 
-// Box-drawing and block geometry, snapped to whole device pixels: axis
-// lines become rectangles of whole-pixel weight centred on the same pixel
-// in every glyph, so an arm in one cell meets the arm in the next.
 const snappedLine = (
   context: CanvasRenderingContext2D,
   part: Extract<GlyphShape[number], { kind: "line" }>,
@@ -122,11 +118,6 @@ const drawShapeSnapped = (
   }
 };
 
-/**
- * Braille on an exact 2x4 lattice: the cell splits into two columns and
- * four rows of whole pixels, and each dot sits centred in its box. Small
- * dots are squares (a 1-2px circle is a smudge); from 4px they are round.
- */
 const drawBraille = (
   context: CanvasRenderingContext2D,
   mask: number,
@@ -156,12 +147,6 @@ const drawBraille = (
   }
 };
 
-/**
- * Shades as regular pixel patterns that line up across cells: ░ lights one
- * pixel in four, ▒ a checkerboard, ▓ three in four. The pattern repeats
- * every 2 pixels from the cell origin. Larger cells use 2x2 pixel blocks so
- * the texture stays visible at DPR 2 and 3.
- */
 const SHADE_PATTERNS: Record<string, (px: number, py: number) => boolean> = {
   "░": (px, py) => px % 2 === 0 && py % 2 === 0,
   "▒": (px, py) => (px + py) % 2 === 0,
@@ -209,7 +194,7 @@ class AtlasImpl implements GlyphAtlas {
     this.glyphs = [];
     this.canvas = document.createElement("canvas");
     this.context = this.canvas.getContext("2d", { willReadFrequently: true });
-    // Slot = index, duplicates included, so a ramp's level is its slot.
+    
     for (const glyph of glyphs) {
       if (!this.slots.has(glyph)) {
         this.slots.set(glyph, this.glyphs.length);
@@ -219,11 +204,10 @@ class AtlasImpl implements GlyphAtlas {
     this.redraw();
   }
 
-  /** Redraw every slot, as after a font load. */
   redraw(): void {
     const { deviceWidth: w, deviceHeight: h } = this.metrics;
     const rows = Math.max(1, Math.ceil(this.glyphs.length / ATLAS_COLUMNS));
-    // Room to grow without resizing on every new dynamic glyph.
+    
     const capacity = this.dynamic ? rows + 2 : rows;
     this.canvas.width = w * ATLAS_COLUMNS;
     this.canvas.height = h * capacity;
@@ -240,7 +224,7 @@ class AtlasImpl implements GlyphAtlas {
     const descent =
       probe.fontBoundingBoxDescent ||
       this.metrics.fontSize * this.metrics.dpr * 0.2;
-    // The font's line box, centred in the cell, so baselines line up across glyphs.
+    
     this.baseline = Math.round((h - (ascent + descent)) / 2 + ascent);
     this.coverages = [];
     for (let slot = 0; slot < this.glyphs.length; slot += 1) {
@@ -281,7 +265,7 @@ class AtlasImpl implements GlyphAtlas {
       context.textAlign = "center";
       context.textBaseline = "alphabetic";
       const advance = context.measureText(glyph).width;
-      // Wide glyphs (full-width forms, emoji) squeeze into one cell.
+      
       const squeeze = advance > w * 1.05 ? w / advance : 1;
       context.translate(x + w / 2, y + this.baseline);
       context.scale(squeeze, 1);
@@ -368,11 +352,6 @@ class AtlasImpl implements GlyphAtlas {
   }
 }
 
-/**
- * The atlas for `glyphs` at `metrics`, cached. A static atlas holds exactly
- * `glyphs` in that order (slot = index, duplicates included); a dynamic
- * one starts with them and grows as `slot()` meets new glyphs. Browser only.
- */
 export const getGlyphAtlas = ({
   metrics,
   glyphs,
@@ -385,7 +364,7 @@ export const getGlyphAtlas = ({
   const key = atlasKey(metrics, dynamic ? null : glyphs);
   const cached = cache.get(key);
   if (cached) {
-    // Refresh its place as most recently used.
+    
     cache.delete(key);
     cache.set(key, cached);
     if (dynamic) {
@@ -406,14 +385,6 @@ export const getGlyphAtlas = ({
   return atlas;
 };
 
-/**
- * Where each ramp glyph sits on the tone axis, 0 for the first and 1 for
- * the last, strictly increasing. `strength` 0 spaces glyphs evenly (the
- * rule `mapTones` uses); 1 spaces them by measured ink coverage, so tone
- * 0.5 picks the glyph that inks half as much as the densest. The default
- * blends the two, which keeps every glyph reachable even where the font
- * draws two neighbours at almost the same weight.
- */
 export const rampPositions = (
   coverage: (index: number) => number,
   count: number,
@@ -433,12 +404,12 @@ export const rampPositions = (
     const measured = span > 1e-4 ? (coverage(index) - first) / span : even;
     const blended =
       even + (Math.min(1, Math.max(0, measured)) - even) * strength;
-    // Monotonic, with a small minimum gap so no glyph collapses to nothing.
+    
     const floor = index === 0 ? 0 : previous + step * 0.15;
     previous = index === count - 1 ? 1 : Math.max(blended, floor);
     positions[index] = previous;
   }
-  // Squeeze back under 1 if the minimum gaps pushed past it.
+  
   const top = positions[count - 2] ?? 0;
   if (top >= 1) {
     for (let index = 1; index < count - 1; index += 1) {
@@ -448,12 +419,6 @@ export const rampPositions = (
   return positions;
 };
 
-/**
- * The ramp level for `tone` given glyph `positions`: the fractional index
- * between the two glyphs around the tone, then `floor(level + cut)` with
- * `cut` 0.5 (or a dither threshold). With evenly spaced positions this is
- * exactly `floor(tone * (n - 1) + cut)`, the `mapTones` rule.
- */
 export const rampLevel = (
   tone: number,
   positions: ArrayLike<number>,
@@ -480,18 +445,11 @@ export const rampLevel = (
   return Math.min(count - 1, Math.max(0, Math.floor(level + cut)));
 };
 
-/** The calibrated positions of the first `count` glyphs in `atlas`. */
 export const atlasRampPositions = (
   atlas: GlyphAtlas,
   count: number
 ): Float32Array => rampPositions((index) => atlas.slotCoverage(index), count);
 
-/**
- * The ramp positions `AsciiShader` uses for a charset at `metrics`, or
- * `null` for Braille and quadrants, which have no ramp. Pass them to
- * `mapTones` as `positions` and it picks the glyph the GPU would. Browser
- * only: the coverage is measured from the glyph atlas.
- */
 export const charsetRampPositions = ({
   charset,
   chars,

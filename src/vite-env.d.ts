@@ -1,4 +1,4 @@
-/// <reference types="vite/client" />
+
 
 declare module "ascii-magic-art/runtime/player.js" {
   export function play(

@@ -3,20 +3,12 @@ import type { Env, Frame, Meta } from "ascii.rest";
 import { PALETTE, roleColor } from "./log-colors";
 import type { LogRole } from "./log-colors";
 
-/**
- * A `git log --graph --oneline` of the real career and education history.
- *
- * Derived from ascii.rest's git-graph piece (MIT): same lanes, short hashes,
- * HEAD/tag marks and typing newest line, but with my own commits. New lines
- * print in quickly on first view, then the finished log stays on screen.
- */
 export interface HistoryLogOptions {
   [key: string]: unknown;
-  /** Seconds between lines appearing on the first look. */
+  
   pace?: number;
 }
 
-/** One row of the log. Rows without `text` are just graph lanes. */
 interface Line {
   graph: string;
   text?: string;
@@ -24,11 +16,8 @@ interface Line {
   branch?: string;
 }
 
-/** Text and one palette role, so the frame can colour each cell. */
 type Segment = [text: string, role: LogRole];
 
-// Newest first. The career is a branch off main that merges back before the
-// master's degree, which is what happened chronologically.
 const LINES: Line[] = [
   {
     graph: "*   ",
@@ -69,13 +58,11 @@ export const meta: Meta<HistoryLogOptions> = {
   rows: 13,
   fps: 12,
   palette: PALETTE,
-  // A negative still time marks the frame the reduced-motion reader sees:
-  // the finished log, not a half-typed line.
+
   still: -1,
   options: { pace: 0.24 },
 };
 
-/** Short hashes that hold still for each line, from the line's index. */
 function sha(i: number) {
   let h = Math.imul(i + 1, 0x9e3779b1) >>> 0;
   h = Math.imul(h ^ (h >>> 15), 0x85ebca6b) >>> 0;
@@ -86,7 +73,6 @@ function sha(i: number) {
     .slice(0, 7);
 }
 
-/** Education in blue, the work branch in green, the merge in orange. */
 const messageRole = (line: Line): LogRole => {
   if (line.graph.startsWith("| *")) return "ok";
   if (line.graph.startsWith("* |")) return "mark";
@@ -97,8 +83,7 @@ export default function historyLog({
   pace = meta.options?.pace ?? 0.24,
 }: Partial<HistoryLogOptions> = {}): Frame {
   const { cols, rows } = meta;
-  // Fast one-shot print: every line is in after ~3s, then time stops at the
-  // finished log. Nothing loops once the visitor has seen it.
+
   const intro = LINES.length * pace;
   const type = Math.min(0.22, pace * 0.85);
   const shas = LINES.map((_, i) => sha(i));

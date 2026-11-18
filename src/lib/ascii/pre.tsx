@@ -6,21 +6,14 @@ import { cssColor } from "@/lib/ascii/tokens";
 import type { AsciiColor } from "@/lib/ascii/tokens";
 import { cn } from "@/lib/utils";
 
-/**
- * A frame as real text in a `<pre>`: no canvas, no JavaScript, renders on
- * the server. Each run of same-coloured glyphs in a row is one `<span>`.
- * For static art, banners, SSR fallbacks and anything readers should be
- * able to select and copy.
- */
-
 export interface AsciiPreProps extends Omit<ComponentProps<"pre">, "children"> {
-  /** The frame to show, or plain text with one line per row. */
+  
   frame: AsciiFrame | string;
-  /** Colour of glyphs without their own. Default `--ascii-ink`. */
+  
   ink?: AsciiColor;
-  /** Background. Default: none. */
+  
   paper?: AsciiColor;
-  /** Cell height in CSS pixels: the line height. Default `--ascii-cell`, or 12. */
+  
   cell?: number;
 }
 
@@ -36,7 +29,6 @@ const rgba = (colors: Uint8ClampedArray, index: number): string | null => {
     : `rgb(${rgb} / ${Math.round((alpha / 255) * 100) / 100})`;
 };
 
-/** One row as text runs, a span per colour change. Spaces join any run. */
 const rowRuns = (frame: AsciiFrame, row: number): ReactNode[] => {
   const { columns, glyphs, colors } = frame;
   const start = row * columns;
@@ -76,7 +68,6 @@ const rowRuns = (frame: AsciiFrame, row: number): ReactNode[] => {
   return runs;
 };
 
-/** A server-renderable `<pre>` of a frame, one line per row, cells exactly `cell` tall. */
 export const AsciiPre = ({
   frame,
   ink = "--ascii-ink",
@@ -108,8 +99,7 @@ export const AsciiPre = ({
       {...props}
     >
       {rows.map((row, index) => (
-        // Rows are positional; they never reorder.
-        // oxlint-disable-next-line react/no-array-index-key
+
         <span key={index}>
           {row}
           {index < rows.length - 1 ? "\n" : null}

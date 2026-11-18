@@ -1,24 +1,17 @@
 import type { Frame, Meta } from "ascii.rest";
 
-/**
- * ascii.rest's `scramble` piece with a configurable pause between phrases.
- *
- * The stock piece hard-codes its 1.9s hold, which reads a little fast for a
- * portfolio header. This is the same decoder with `hold` exposed as an
- * option. Derived from ascii.rest's scramble piece (MIT).
- */
 export interface ScrambleOptions {
   [key: string]: unknown;
-  /** Phrases to cycle through, each cropped to the piece's width. */
+  
   phrases: string[];
-  /** Seconds a settled phrase stays before the next one decodes in. */
+  
   hold: number;
 }
 
 const GLYPHS = "!<>-_\\/[]{}=+*^?#%&$@0123456789abcdefxyz";
-const OUT = 0.022; // seconds between columns breaking up
-const IN = 0.05; // seconds between columns settling
-const LEAD = 0.32; // seconds of pure noise before the first column settles
+const OUT = 0.022; 
+const IN = 0.05; 
+const LEAD = 0.32; 
 
 export const meta: Meta<ScrambleOptions> = {
   name: "scramble",
@@ -56,8 +49,6 @@ export default function scramble({
   const rand = mulberry32(77);
   const placed = list.map((p) => ({ text: p, x: Math.floor((cols - p.length) / 2) }));
 
-  // One transition per phrase, into it from the one before: when each column
-  // breaks up and when it settles, with a little jitter so the front is ragged.
   let at = 0;
   const steps = placed.map((to, i) => {
     const from = placed[(i + placed.length - 1) % placed.length];
@@ -75,7 +66,7 @@ export default function scramble({
     return s;
   });
   const period = at;
-  // Frame 0 holds the first phrase, settled, just before it breaks up.
+  
   const offset = steps[0].end - 0.7;
 
   const charAt = (p: { x: number; text: string }, c: number) =>
@@ -98,7 +89,7 @@ export default function scramble({
       } else if (a === " " && b === " " && now < s.out[k] + 0.12) {
         line[c] = " ";
       } else {
-        // A new glyph for this column on every tick, the same in every instance.
+        
         let h = Math.imul(c ^ Math.imul(tick, 0x27d4eb2d), 0x9e3779b1);
         h = Math.imul(h ^ (h >>> 15), 0x85ebca77);
         line[c] = GLYPHS[((h ^ (h >>> 13)) >>> 0) % GLYPHS.length];

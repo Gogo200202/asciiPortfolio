@@ -8,37 +8,6 @@ import { DEFAULT_FONT, GLYPH_ADVANCE, LINE_HEIGHT } from "@/lib/ascii/measure";
 import { cssColor } from "@/lib/ascii/tokens";
 import type { AsciiColor, AsciiColorName } from "@/lib/ascii/tokens";
 
-/**
- * The fill kit: glyph textures for charts and interface pieces, drawn as
- * CSS masks and SVG patterns tiled on the glyph cell grid, plus phosphor
- * glow and the default series palette. Pure and server-safe. The SVG
- * pieces that use it (`FillPattern`, `AsciiPattern`, `BloomGroup`) live in
- * `fill.tsx` and `pattern.tsx`.
- *
- * Fill textures (`FILL_TEXTURES`):
- * - `shade`: `█▓▒░·`, densest at `edge` and thinning cell by cell. The
- *   classic ANSI-art gradient. Old name: `gradient`.
- * - `ascii`: `#*+=-:.`, the same ramp in ASCII strokes.
- * - `braille`: Braille cells losing dots, `⣿` to `⠂`. Fine and light, good
- *   for line and area charts.
- * - `blocks`: quadrant blocks, `█▛▚▘`. Chunky and bold.
- * - `dots`: halftone dots, `●•·`. Old name `dotted` keeps its even field of
- *   small dots.
- * - `hatch`: `╱` in every cell, which joins into continuous diagonals.
- *   Old name: `hatched`.
- * - `solid`: flat colour.
- *
- * Ramp variants (all but `hatch` and `solid`) take a `level` for one even
- * density instead of a gradient. Between two glyphs of a ramp, cells mix
- * the two by ordered dithering, so any level reads as its true density.
- *
- * Every glyph is drawn from geometry (`lib/ascii/glyphs.ts`), not a font:
- * CSS masks can't load page fonts, and shapes stay crisp and identical on
- * every system. A custom ramp (`chars`) with letters falls back to SVG
- * text in the system monospace font.
- */
-
-/** Every fill texture, in picker order. */
 export const FILL_TEXTURES = [
   "shade",
   "ascii",
@@ -50,7 +19,6 @@ export const FILL_TEXTURES = [
 ] as const;
 export type FillTexture = (typeof FILL_TEXTURES)[number];
 
-/** Names from before the glyph kit, and the texture each now draws. */
 export const FILL_ALIASES = {
   dotted: "dots",
   gradient: "shade",
@@ -58,11 +26,6 @@ export const FILL_ALIASES = {
 } as const satisfies Record<string, FillTexture>;
 export type FillAlias = keyof typeof FILL_ALIASES;
 
-/**
- * The four fill names from before the glyph kit. They keep working and
- * draw glyphs (`gradient` is `shade`, `dotted` an even field of `dots`,
- * `hatched` is `hatch`). New code should use `FILL_TEXTURES`.
- */
 export const FILL_VARIANTS = [
   "gradient",
   "dotted",
@@ -71,37 +34,26 @@ export const FILL_VARIANTS = [
 ] as const;
 export type FillVariant = (typeof FILL_VARIANTS)[number];
 
-/** Any fill name the kit accepts: a texture or an old name. */
 export type FillName = FillTexture | FillAlias;
 
-/** The variants that are density ramps and take a `level`. */
 export type RampTexture = Exclude<FillTexture, "hatch" | "solid">;
 
 const isFillAlias = (variant: string): variant is FillAlias =>
   Object.hasOwn(FILL_ALIASES, variant);
 
-/** The texture a name draws: `fillTexture("gradient")` is `"shade"`. */
 export const fillTexture = (variant: FillName): FillTexture =>
   isFillAlias(variant) ? FILL_ALIASES[variant] : variant;
 
-/** True for the density-ramp variants. */
 export const isRampTexture = (texture: FillTexture): texture is RampTexture =>
   texture !== "hatch" && texture !== "solid";
 
-/** The even level `dotted` stood for: a sparse field of small dots. */
 export const DOTTED_LEVEL = 0.3;
 
-/** The side of a shape where a ramp fill is densest. */
 export type FillEdge = "top" | "bottom" | "left" | "right";
 
-/** A phosphor glow in the fill's colour around it. */
 export const BLOOMS = ["off", "low", "high"] as const;
 export type Bloom = (typeof BLOOMS)[number];
 
-/**
- * Series colours in order: distinct hues, so two or more series never
- * rely on texture alone.
- */
 export const SERIES_COLORS = [
   "ink",
   "orange",
@@ -113,17 +65,11 @@ export const SERIES_COLORS = [
   "grey",
 ] as const satisfies readonly [AsciiColorName, ...AsciiColorName[]];
 
-/** The colour of series `index`: its own, or the next palette colour. */
 export const seriesColor = (color: AsciiColor | undefined, index: number) =>
   color ?? SERIES_COLORS[index % SERIES_COLORS.length] ?? "ink";
 
-/** Cell width over height for fills: a 0.6em advance on a 1.2em line. */
 export const CELL_ASPECT = GLYPH_ADVANCE / LINE_HEIGHT;
 
-/**
- * A glyph ramp: glyphs from empty to dense, each with the density it
- * stands for (0 to 1, rising, first 0, last 1).
- */
 export interface GlyphRamp {
   readonly glyphs: readonly string[];
   readonly levels: readonly number[];
@@ -134,16 +80,10 @@ const evenly = (glyphs: readonly string[]): GlyphRamp => ({
   levels: glyphs.map((_, index) => index / Math.max(1, glyphs.length - 1)),
 });
 
-// Braille dots added one at a time so each step spreads evenly: four dots
-// make a checkerboard, eight a full cell.
 const BRAILLE_STEPS = [0, 2, 34, 42, 106, 107, 235, 251, 255].map((mask) =>
   String.fromCodePoint(BRAILLE_BASE + mask)
 );
 
-/**
- * The ramp behind each ramp variant. Levels follow how much of the cell
- * each glyph inks, so a level of 0.5 reads half as dense as the full glyph.
- */
 export const GLYPH_RAMPS = {
   ascii: evenly([..." .:-=+*#"]),
   blocks: { glyphs: [..." ▘▚▛█"], levels: [0, 0.25, 0.5, 0.75, 1] },
@@ -152,17 +92,11 @@ export const GLYPH_RAMPS = {
   shade: { glyphs: [..." ·░▒▓█"], levels: [0, 0.06, 0.25, 0.5, 0.75, 1] },
 } as const satisfies Record<RampTexture, GlyphRamp>;
 
-/** A ramp variant's name, or a custom ramp from empty to dense such as `" .oO@"`. */
-// oxlint-disable-next-line typescript/ban-types -- `string & {}` keeps editor autocomplete for the names.
 export type FillGlyphs = RampTexture | (string & {});
 
 const isRampName = (value: string): value is RampTexture =>
   Object.hasOwn(GLYPH_RAMPS, value);
 
-/**
- * The ramp for a variant name or a custom string. A custom ramp needs at
- * least two glyphs (empty first); anything shorter falls back to `shade`.
- */
 export const glyphRamp = (glyphs: FillGlyphs = "shade"): GlyphRamp => {
   if (isRampName(glyphs)) {
     return GLYPH_RAMPS[glyphs];
@@ -171,10 +105,6 @@ export const glyphRamp = (glyphs: FillGlyphs = "shade"): GlyphRamp => {
   return custom.length >= 2 ? evenly(custom) : GLYPH_RAMPS.shade;
 };
 
-/**
- * The glyph for `level` on a ramp. Between two glyphs, `threshold` (0 to
- * 1, from a dither matrix) picks the denser one when the level is past it.
- */
 export const rampGlyph = (
   ramp: GlyphRamp,
   level: number,
@@ -193,7 +123,6 @@ export const rampGlyph = (
   return glyphs.at(-1) ?? " ";
 };
 
-/** A repeating block of glyphs, `columns` by `rows`, row-major. */
 export interface GlyphTile {
   readonly columns: number;
   readonly rows: number;
@@ -212,11 +141,6 @@ const cached = (key: string, build: () => GlyphTile): GlyphTile => {
   return tile;
 };
 
-/**
- * One even density: one matrix of cells, each the ramp glyph for `level`
- * at that cell's threshold. A level that lands exactly on a glyph tiles
- * that glyph alone.
- */
 export const levelTile = (
   level: number,
   {
@@ -236,27 +160,22 @@ export const levelTile = (
   });
 
 export interface RampOptions {
-  /** Side where the ramp is densest. */
+  
   edge: FillEdge;
-  /** Length of the fade in cells. */
+  
   length: number;
-  /** Total length of the tile in cells, at least `length`. Past the fade it holds `to`. */
+  
   extent?: number;
-  /** Density at the edge, 0 to 1. */
+  
   from: number;
-  /** Density at the far end of the fade, 0 to 1. */
+  
   to: number;
-  /** Threshold matrix that mixes neighbouring glyphs. Default `bayer4`. */
+  
   matrix?: DitherMatrix;
-  /** The ramp's glyphs. Default `shade`. */
+  
   glyphs?: FillGlyphs;
 }
 
-/**
- * A ramp tile: density falls linearly from `from` at `edge` to `to` over
- * `length` cells, then holds. One matrix wide across the ramp, its length
- * rounded up to whole matrices so it lines up with an even fill.
- */
 export const edgeTile = ({
   edge,
   length,
@@ -297,27 +216,23 @@ export const edgeTile = ({
     }
   );
 
-/** `╱` in every cell: neighbouring cells join into unbroken diagonals. */
 export const HATCH_TILE: GlyphTile = { columns: 1, glyphs: ["╱"], rows: 1 };
 
-/** A glyph the tile draws with a font, at its cell's top-left corner. */
 export interface TileText {
   readonly glyph: string;
   readonly x: number;
   readonly y: number;
 }
 
-/** A tile drawn into cells of `cellWidth` by `cellHeight` user units. */
 export interface TileDrawing {
-  /** Path data for every geometric glyph, filled. */
+  
   readonly path: string;
-  /** Glyphs that need a font. Usually empty. */
+  
   readonly text: readonly TileText[];
   readonly width: number;
   readonly height: number;
 }
 
-/** Path data (and any font glyphs) for a tile at a cell size. */
 export const drawTile = (
   tile: GlyphTile,
   cellWidth: number,
@@ -352,15 +267,9 @@ const escapeXml = (value: string) =>
     .replaceAll("<", "&lt;")
     .replaceAll('"', "&quot;");
 
-// Mask tiles are drawn at this cell size and scaled by `mask-size`.
 const UNIT_HEIGHT = 12;
 const UNIT_WIDTH = UNIT_HEIGHT * CELL_ASPECT;
 
-/**
- * A tile as a standalone SVG document, black on transparent, for masks and
- * data URLs. Font glyphs use the system monospace stack: an SVG loaded as
- * an image can't see the page's web fonts.
- */
 export const tileSvg = (
   tile: GlyphTile,
   {
@@ -370,7 +279,7 @@ export const tileSvg = (
   }: {
     cellWidth?: number;
     cellHeight?: number;
-    /** Intrinsic size in CSS pixels, so the image tiles without `mask-size`. */
+    
     size?: { width: number; height: number };
   } = {}
 ): string => {
@@ -392,11 +301,9 @@ export const tileSvg = (
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${drawing.width} ${drawing.height}"${dimensions}>${font}<path d="${drawing.path}"/>${text}</svg>`;
 };
 
-/** A CSS `url(...)` for an SVG document. */
 export const svgUrl = (svg: string): string =>
   `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
 
-/** A tile as a CSS `url(...)` image. */
 export const tileUrl = (tile: GlyphTile): string => svgUrl(tileSvg(tile));
 
 const times = (cell: number | string, count: number) =>
@@ -404,25 +311,18 @@ const times = (cell: number | string, count: number) =>
     ? `${Math.round(cell * count * 1000) / 1000}px`
     : `calc(${cell} * ${Math.round(count * 1000) / 1000})`;
 
-/** CSS `mask-size` for a tile with cells `cell` tall (a CSS length or pixels). */
 export const tileSize = (tile: GlyphTile, cell: number | string): string =>
   `${times(cell, tile.columns * CELL_ASPECT)} ${times(cell, tile.rows)}`;
 
-/** One tile of a texture in square cell units. Kept for code written before the glyph kit. */
 export interface FillTile {
-  /** Side of the tile in cells. */
+  
   size: number;
-  /** The glyphs drawn into square 1x1 cells. */
+  
   path: string;
-  /** The glyphs themselves. */
+  
   tile: GlyphTile;
 }
 
-/**
- * The repeating tile of the old textured variants, with each glyph drawn
- * into a square cell. Prefer `levelTile` / `HATCH_TILE` with `drawTile`,
- * which keep the glyph cell's real shape.
- */
 export const fillTile = (
   variant: "dotted" | "hatched" | "dots" | "hatch"
 ): FillTile => {
@@ -438,20 +338,16 @@ export const fillTile = (
 };
 
 export interface RampTile {
-  /** Tile width in cells. */
+  
   width: number;
-  /** Tile height in cells. */
+  
   height: number;
-  /** The glyphs drawn into square 1x1 cells. */
+  
   path: string;
-  /** The glyphs themselves. */
+  
   tile: GlyphTile;
 }
 
-/**
- * `edgeTile` with its glyphs drawn into square cells, for code written
- * before the glyph kit. Prefer `edgeTile` with `drawTile` or `tileSvg`.
- */
 export const asciiRamp = (options: RampOptions): RampTile => {
   const tile = edgeTile(options);
   return {
@@ -470,23 +366,23 @@ const EDGE_POSITION = {
 } as const satisfies Record<FillEdge, string>;
 
 export interface FillStyleOptions {
-  /** Colour, a palette name or any CSS colour. Default `ink`. */
+  
   color?: AsciiColor;
-  /** Glyph cell height: CSS pixels or any CSS length. Default `var(--ascii-cell)`. */
+  
   cell?: number | string;
-  /** Ramp variants: one even density, 0 to 1, instead of a ramp from `edge`. */
+  
   level?: number;
-  /** Ramp variants: a custom ramp from empty to dense, such as `" .oO@"`. */
+  
   chars?: string;
-  /** Ramps: the dense side. Default `bottom`. */
+  
   edge?: FillEdge;
-  /** Ramps: length of the fade in cells. Default 24. */
+  
   length?: number;
-  /** Ramps: density at the edge. Default 1. */
+  
   from?: number;
-  /** Ramps: density past the fade. Default 0.06 (a sparse field of the lightest glyph). */
+  
   to?: number;
-  /** Matrix that mixes neighbouring glyphs between levels. Default `bayer4`. */
+  
   matrix?: DitherMatrix;
 }
 
@@ -524,10 +420,6 @@ const maskStyle = (
   return style;
 };
 
-/**
- * Inline styles that mask an element to a glyph tile at one even level,
- * tiled on the cell grid. Pair with a background colour.
- */
 export const levelMaskStyle = (
   level: number,
   {
@@ -540,16 +432,6 @@ export const levelMaskStyle = (
   return maskStyle([{ image: tileUrl(tile), size: tileSize(tile, cell) }]);
 };
 
-/**
- * Inline styles that paint an element with a fill variant: a background
- * colour and, for every variant but `solid`, a CSS mask tiled from glyphs.
- * The element needs a size; children are masked too, so put content in a
- * sibling.
- *
- * ```tsx
- * <div className="absolute inset-0" style={fillStyle("shade", { color: "green", edge: "left" })} />
- * ```
- */
 export const fillStyle = (
   variant: FillName,
   {
@@ -597,8 +479,7 @@ export const fillStyle = (
   if (floor.glyphs.every((glyph) => glyph === " ")) {
     return { backgroundColor, ...maskStyle([rampLayer]) };
   }
-  // Past the ramp the floor level carries on. The floor is cut away under
-  // the ramp (subtract) so the two never stack glyphs in one cell.
+
   const reach = vertical
     ? `100% ${times(cell, ramp.rows)}`
     : `${times(cell, ramp.columns * CELL_ASPECT)} 100%`;
@@ -624,7 +505,6 @@ export const fillStyle = (
   };
 };
 
-/** Blur radius and strength of each glow level. */
 export const BLOOM_LEVELS = {
   high: { blur: 18, strength: 0.55 },
   low: { blur: 10, strength: 0.3 },
@@ -633,15 +513,8 @@ export const BLOOM_LEVELS = {
   { blur: number; strength: number }
 >;
 
-/** Glow strength per theme: `--ascii-glow`, or the older `--ascii-bloom`. */
 export const GLOW_VAR = "var(--ascii-glow, var(--ascii-bloom, 1))";
 
-/**
- * Styles for a glow layer: a blurred, translucent copy of a fill drawn
- * behind it, like phosphor light bleeding past the glyphs. `--ascii-glow`
- * scales it per theme (strong in dark, low in light, where glows turn
- * muddy). `undefined` when off.
- */
 export const bloomLayerStyle = (bloom: Bloom): CSSProperties | undefined => {
   if (bloom === "off") {
     return undefined;
@@ -653,11 +526,6 @@ export const bloomLayerStyle = (bloom: Bloom): CSSProperties | undefined => {
   };
 };
 
-/**
- * A CSS `filter` that glows around an element in `color`: a tight bright
- * halo hugging each glyph and a wide soft one. For DOM pieces (buttons,
- * bars) where a copy of the fill is not handy. `undefined` when off.
- */
 export const bloomFilter = (
   color: AsciiColor,
   bloom: Bloom
@@ -671,7 +539,6 @@ export const bloomFilter = (
   return `drop-shadow(0 0 ${Math.round(blur / 4)}px ${tint(strength * 1.5)}) drop-shadow(0 0 ${blur}px ${tint(strength)})`;
 };
 
-/** `{ filter }` for `bloomFilter`, ready to spread into `style`. */
 export const bloomStyle = (color: AsciiColor, bloom: Bloom): CSSProperties => {
   const filter = bloomFilter(color, bloom);
   return filter === undefined ? {} : { filter };

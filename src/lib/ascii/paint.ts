@@ -3,9 +3,9 @@ import type { AsciiFrame } from "@/lib/ascii/frame";
 import type { CellMetrics } from "@/lib/ascii/measure";
 
 export interface PaintColors {
-  /** Colour of glyphs without their own, as any CSS colour. */
+  
   readonly ink: string;
-  /** Background, or `null` to leave the canvas transparent. */
+  
   readonly paper: string | null;
 }
 
@@ -19,7 +19,6 @@ interface Scratch {
   pixels: ImageData | null;
 }
 
-// One scratch pair per target canvas, dropped with it.
 const scratches = new WeakMap<HTMLCanvasElement, Scratch>();
 
 const createContext = (canvas: HTMLCanvasElement): Context2D | null =>
@@ -45,7 +44,6 @@ const scratchFor = (target: HTMLCanvasElement): Scratch | null => {
 const inkCache = new Map<string, readonly [number, number, number, number]>();
 let inkProbe: Context2D | null = null;
 
-/** Any CSS colour as RGBA bytes, through a 1x1 canvas. */
 const colorBytes = (css: string): readonly [number, number, number, number] => {
   const hit = inkCache.get(css);
   if (hit) {
@@ -72,7 +70,6 @@ const colorBytes = (css: string): readonly [number, number, number, number] => {
   return bytes;
 };
 
-/** Copy every non-space glyph out of the atlas, white, into its cell. */
 const blitGlyphs = (
   layer: Context2D,
   frame: AsciiFrame,
@@ -107,7 +104,6 @@ const blitGlyphs = (
   }
 };
 
-/** One pixel per cell: the cell's own colour, or ink where it has none. */
 const fillTint = (
   data: Uint8ClampedArray,
   colors: Uint8ClampedArray,
@@ -122,12 +118,6 @@ const fillTint = (
   }
 };
 
-/**
- * Paint `frame` onto `context`'s canvas, one cell per
- * `metrics.deviceWidth` x `metrics.deviceHeight` pixels from the top-left.
- * The canvas should already be `columns * deviceWidth` by
- * `rows * deviceHeight`.
- */
 export const paintFrame = (
   context: Context2D,
   frame: AsciiFrame,
@@ -138,8 +128,7 @@ export const paintFrame = (
   const { width, height } = canvas;
   context.setTransform(1, 0, 0, 1, 0, 0);
   context.globalCompositeOperation = "source-over";
-  // Clear first: a translucent paper drawn over the last frame would let
-  // it show through, and animated grids would smear.
+
   context.clearRect(0, 0, width, height);
   if (paper) {
     context.fillStyle = paper;
@@ -159,10 +148,8 @@ export const paintFrame = (
     layerContext.clearRect(0, 0, width, height);
   }
 
-  // 1. White glyphs, copied from the atlas.
   blitGlyphs(layerContext, frame, metrics);
 
-  // 2. Tint: one colour for the frame, or one pixel per cell stretched over it.
   layerContext.globalCompositeOperation = "source-in";
   if (colors) {
     if (tint.width !== columns || tint.height !== rows || !scratch.pixels) {
@@ -180,6 +167,5 @@ export const paintFrame = (
   }
   layerContext.globalCompositeOperation = "source-over";
 
-  // 3. Onto the paper.
   context.drawImage(layer, 0, 0);
 };

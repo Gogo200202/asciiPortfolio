@@ -8,7 +8,6 @@ import { Ascii } from "ascii.rest/react";
 import * as historyLog from "@/lib/history-log";
 import * as stackLog from "@/lib/stack-log";
 
-/** Starts the one-shot print the first time the section is looked at. */
 function useFirstLook() {
   const ref = useRef<HTMLDivElement>(null);
   const [seen, setSeen] = useState(false);
@@ -24,7 +23,7 @@ function useFirstLook() {
           observer.disconnect();
         }
       },
-      // Only once it is properly on screen, not while the hero is still up.
+      
       { rootMargin: "-15% 0px -15% 0px" }
     );
     observer.observe(ref.current);
@@ -49,8 +48,7 @@ function TerminalPanel({
 }) {
   return (
     <div className="mx-auto w-full min-w-0 overflow-hidden rounded-sm border border-border/60 bg-background/80 p-2.5 backdrop-blur-[2px] sm:p-3">
-      {/* Same aspect ratio ascii.rest gives the canvas, so the space is
-          reserved before the first look and there is no layout shift. */}
+      
       <div
         style={{
           width: "100%",
@@ -67,7 +65,6 @@ function TerminalPanel({
   );
 }
 
-/** The same information as the two ASCII logs, for screen readers. */
 function HistoryText() {
   return (
     <div className="sr-only">

@@ -2,16 +2,10 @@ const COMMENTS = /\/\*[\s\S]*?\*\/|\/\/[^\r\n]*/g;
 const DIRECTIVE = /^[ \t]*#/m;
 const STRUCT = /^\s*(?:(?:lowp|mediump|highp|const|uniform)\s+)*struct\b/;
 const PRECISION = /^\s*precision\b/;
-// GLSL tokens: numbers (with any exponent), names, the two-character
-// operators, then any other single character, `.` included. So `p.x` and
-// `p . x` match, while `a + ++b` and `a++ +b` stay different.
+
 const TOKEN =
   /\d+\.\d*(?:[eE][-+]?\d+)?|\.\d+(?:[eE][-+]?\d+)?|\d+(?:[eE][-+]?\d+)?|[A-Za-z_]\w*|\+\+|--|<=|>=|==|!=|&&|\|\||\^\^|[-+*/]=|\S/g;
 
-/**
- * GLSL without directives, split at the top level with comments dropped:
- * declarations ending in `;` and definitions ending in their `}`.
- */
 const topLevelChunks = (source: string): string[] => {
   const code = source.replaceAll(COMMENTS, " ");
   const chunks: string[] = [];
@@ -30,7 +24,7 @@ const topLevelChunks = (source: string): string[] => {
       depth += 1;
     } else if (char === "}") {
       depth -= 1;
-      // A struct declaration runs on to its `;`, which may name variables.
+      
       if (depth === 0 && !STRUCT.test(code.slice(start, index))) {
         cut(index + 1);
       }
@@ -47,16 +41,6 @@ const tokens = (chunk: string) => chunk.match(TOKEN)?.join(" ") ?? "";
 const hasDirective = (source: string) =>
   DIRECTIVE.test(source.replaceAll(COMMENTS, " "));
 
-/**
- * `field` and `colorField` compile into one shader, where defining a helper
- * twice is an error. A common way to share one is to prepend the same
- * string to both, so drop any definition from `colorField` that `field`
- * already has, token for token. Two different definitions still fail.
- * Sources with preprocessor directives are left alone: a definition's
- * meaning can depend on `#if` and `#define` around it. `precision`
- * statements are always kept, since each sets the precision for the code
- * after it.
- */
 export const withoutSharedHelpers = (
   field: string,
   colorField: string
@@ -70,23 +54,6 @@ export const withoutSharedHelpers = (
     .join("\n");
 };
 
-/**
- * GLSL helpers available to every field (GLSL ES 1.00, the dialect fields
- * are written in). Names starting with `u_` are reserved for the engine's
- * uniforms and `ascii_` for its helpers.
- *
- * - `float hash21(vec2 p)`: a stable pseudo-random value in [0, 1).
- * - `float snoise(vec2 p)`: 2D simplex noise in [-1, 1].
- * - `float fbm(vec2 p)`: four octaves of simplex noise, in [0, 1].
- * - `vec3 spectrum(float h)`: a saturated rainbow. 0 is red, then yellow,
- *   green, cyan, blue and magenta, back to red at 1; it wraps.
- * - `vec4 paletteColor(float x)`: the palette's ink colours, every entry
- *   after the paper, as a smooth ramp from x = 0 to 1.
- * - `vec3 oklch(float L, float C, float h)`: an OKLCH colour (h in
- *   radians) as linear RGB. Pass it through `toSrgb` before returning it.
- * - `vec3 toSrgb(vec3 linear)`: linear RGB to sRGB, clamped.
- * - `vec3 aces(vec3 x)`: the ACES filmic tone map, for HDR-ish colour.
- */
 export const GLSL_HELPERS = `
 float hash21(vec2 p) {
   p = fract(p * vec2(123.34, 456.21));
@@ -186,7 +153,6 @@ vec4 ascii_rgba(vec4 color) {
 }
 `;
 
-/** Uniforms every field can read, declared before the helpers. */
 const FIELD_UNIFORMS = `
 uniform vec2 u_resolution;
 uniform float u_time;
@@ -203,18 +169,13 @@ uniform float ascii_interaction;
 uniform sampler2D ascii_trail;
 `;
 
-/**
- * Pointer interaction, applied to the sample position before the field
- * runs. Distances are in sample rows (`1.0 / res.y`), so a radius looks
- * the same in a wide box and a tall one.
- */
 const INTERACTION = `
 vec2 ascii_interact(vec2 uv, out float keep, out float boost) {
   keep = 1.0;
   boost = 0.0;
   vec2 aspect = vec2(u_resolution.x / u_resolution.y, 1.0);
   if (ascii_interaction > 0.5 && ascii_interaction < 1.5) {
-    // Repel: glyphs bulge away from the pointer and its core clears.
+    
     vec2 d = (uv - u_pointer.xy) * aspect;
     float dist = length(d);
     float radius = 0.24;
@@ -223,7 +184,7 @@ vec2 ascii_interact(vec2 uv, out float keep, out float boost) {
     uv -= dir * fall * radius * 0.55 / aspect;
     keep = 1.0 - 0.9 * smoothstep(radius * 0.42, 0.0, dist) * u_pointer.z;
   } else if (ascii_interaction > 1.5 && ascii_interaction < 2.5) {
-    // Ripple: a ring leaves each click, displacing and lighting glyphs.
+    
     float age = u_click.z;
     if (age < 4.0) {
       vec2 d = (uv - u_click.xy) * aspect;
@@ -240,11 +201,6 @@ vec2 ascii_interact(vec2 uv, out float keep, out float boost) {
 }
 `;
 
-/**
- * The field pass: one fragment per sample, writing the colour in RGB and
- * the tone in alpha. GLSL ES 1.00 so fields written for WebGL1 compile
- * unchanged (ES 3.00 reserves words like `sample` and `input`).
- */
 export const fieldShader = ({
   field,
   colorField,
@@ -267,12 +223,12 @@ ${INTERACTION}
   let color = "";
   if (colorField !== undefined) {
     const kept = withoutSharedHelpers(field, colorField);
-    // Nothing shared: keep the source as written, so error lines match it.
+    
     const dropped =
       topLevelChunks(kept).length < topLevelChunks(colorField).length;
     color = dropped ? kept : colorField;
   }
-  // Line numbers before each source starts, for compile error messages.
+  
   const fieldLine = head.split("\n").length - 1;
   const colorLine = fieldLine + field.split("\n").length;
   const source = `${head}${field}
@@ -283,7 +239,7 @@ void main() {
   float boost;
   vec2 uv = ascii_interact(base, keep, boost);
   float tone = field(uv, u_resolution, u_time);
-  // NaN and infinities from a field become paper, not noise.
+  
   tone = (tone == tone && abs(tone) < 1e6) ? clamp(tone, 0.0, 1.0) : 0.0;
   tone = clamp(tone * keep + boost, 0.0, 1.0);
   if (ascii_interaction > 2.5) {
@@ -299,7 +255,6 @@ void main() {
   return { colorLine, fieldLine, source };
 };
 
-/** A full-screen triangle, shared by every pass. */
 export const VERTEX_SHADER = `#version 300 es
 in vec2 a_position;
 void main() {
@@ -307,7 +262,6 @@ void main() {
 }
 `;
 
-/** The same triangle for the GLSL ES 1.00 field pass. */
 export const VERTEX_SHADER_100 = `
 attribute vec2 a_position;
 void main() {
@@ -315,7 +269,6 @@ void main() {
 }
 `;
 
-/** Charset kinds as the cell pass numbers them. */
 export const KIND_CODES = {
   braille: 1,
   edge: 3,
@@ -323,7 +276,6 @@ export const KIND_CODES = {
   ramp: 0,
 } as const;
 
-/** Colour modes as the cell pass numbers them; duotone and palette share a ramp. */
 export const COLOR_CODES = {
   ansi16: 2,
   duotone: 3,
@@ -332,13 +284,6 @@ export const COLOR_CODES = {
   truecolor: 1,
 } as const;
 
-/**
- * The cell pass: one fragment per glyph cell. It reads the cell's samples,
- * picks the glyph and its colour with the same rules as `mapTones` in
- * `frame.ts`, and writes the glyph's atlas slot (attachment 0) and colour
- * (attachment 1). `capture()` reads these back, so exported text is what
- * the screen shows. Row 0 of the output is the top row of cells.
- */
 export const CELL_SHADER = `#version 300 es
 precision highp float;
 precision highp int;
@@ -379,7 +324,6 @@ float grade(float t) {
   return u_grade.z == 1.0 ? shaped : pow(shaped, 1.0 / max(0.01, u_grade.z));
 }
 
-// A sample by its top-left based coordinate; the texture's row 0 is the bottom.
 vec4 fieldAt(ivec2 p) {
   return texelFetch(u_field, ivec2(p.x, fieldSize.y - 1 - p.y), 0);
 }
@@ -492,7 +436,7 @@ void main() {
         rgb += s.rgb;
         if (t > (u_dither == 1 ? cutAt(p) : u_threshold)) {
           if (u_kind == 1) {
-            // Braille dot bits: 1-3 down the left, 4-6 down the right, 7-8 on the bottom row.
+            
             int bit = dy == 3 ? (dx == 0 ? 64 : 128) : (dx == 0 ? (1 << dy) : (8 << dy));
             mask |= bit;
           } else {
@@ -516,7 +460,7 @@ void main() {
       float sy = T(-1, 1) + 2.0 * T(0, 1) + T(1, 1) - T(-1, -1) - 2.0 * T(0, -1) - T(1, -1);
       #undef T
       if (length(vec2(sx, sy)) / 4.0 > u_edgeThreshold) {
-        // y points down here, as in edgeChar: fold the angle into [0, pi).
+        
         float angle = atan(sy, sx);
         if (angle < 0.0) {
           angle += 3.14159265;
@@ -528,7 +472,6 @@ void main() {
     }
   }
 
-  // Glitch: a few cells flip to a random glyph on glitch frames.
   if (u_glitch > 0.0 && hash(vec2(cell) + u_glitchSeed) < u_glitch * 0.06) {
     float pick = hash(vec2(cell) * 1.7 + u_glitchSeed + 3.1);
     slot = u_kind == 1 ? int(pick * 255.0) + 1 : u_kind == 2 ? int(pick * 15.0) + 1 : int(pick * float(u_count - 1)) + 1;
@@ -563,11 +506,6 @@ void main() {
 }
 `;
 
-/**
- * The glyph pass: one fragment per device pixel. Finds the pixel's cell,
- * reads the cell's slot and colour, and draws the glyph from the atlas
- * over the paper, then the post effects. Output is premultiplied alpha.
- */
 export const GLYPH_SHADER = `#version 300 es
 precision highp float;
 precision highp int;
@@ -601,7 +539,6 @@ void main() {
   float vignette = u_fx2.y;
   float dpr = u_fx2.z;
 
-  // Top-left based position in [0, 1].
   vec2 p = vec2(gl_FragCoord.x, u_canvas.y - gl_FragCoord.y) / u_canvas;
   float outside = 0.0;
   if (curvature > 0.0) {
@@ -616,7 +553,7 @@ void main() {
   ivec2 px = ivec2(floor(p * u_canvas));
   ivec2 cell = px / u_cellSize;
   ivec2 local = px - cell * u_cellSize;
-  // Glitch: a band of rows jumps sideways for a frame.
+  
   if (cell.y >= int(u_glitchRows.x) && cell.y < int(u_glitchRows.y)) {
     cell.x += int(u_glitchRows.z);
   }
@@ -635,7 +572,7 @@ void main() {
       covs.r = coverageAt(slot, local - ivec2(shift, 0));
       covs.b = coverageAt(slot, local + ivec2(shift, 0));
     }
-    // Premultiplied: glyph over paper, channel by channel for the RGB split.
+    
     rgb = ink * covs + rgb * (1.0 - covs);
     alpha = max(cov, max(covs.r, covs.b)) + alpha * (1.0 - max(cov, max(covs.r, covs.b)));
   }
@@ -663,17 +600,12 @@ void main() {
     alpha *= shade;
   }
 
-  // Curved glass leaves black corners (transparent without paper).
   rgb *= 1.0 - outside;
   alpha = mix(alpha, u_paper.a, outside);
   o_color = vec4(rgb, alpha);
 }
 `;
 
-/**
- * Bloom: a separable blur at cell resolution. The first pass reads the
- * cells (colour times glyph coverage), the second the first's output.
- */
 export const BLUR_SHADER = `#version 300 es
 precision highp float;
 
@@ -702,7 +634,6 @@ void main() {
 }
 `;
 
-/** The pointer trail: last frame's wake, decayed, plus a soft stamp at the pointer. */
 export const TRAIL_SHADER = `#version 300 es
 precision highp float;
 
@@ -725,10 +656,6 @@ void main() {
 
 const LOG_LINE = /ERROR:\s*\d+:(\d+):\s*(.*)/g;
 
-/**
- * A compile log with each error pointed at the line of `field` or
- * `colorField` it came from, so the message names the caller's code.
- */
 export const describeCompileLog = ({
   log,
   field,

@@ -27,48 +27,28 @@ import type {
   Rgb8,
 } from "@/lib/ascii/palettes";
 
-/** One frame of ASCII: a grid of glyphs and, optionally, a colour each. */
 export interface AsciiFrame {
   readonly columns: number;
   readonly rows: number;
-  /** Row-major, one glyph per cell. A space is an empty cell. */
+  
   readonly glyphs: readonly string[];
-  /**
-   * RGBA bytes per cell, row-major, or `null` when every glyph takes the
-   * renderer's ink colour. Alpha 0 on a non-space glyph also means ink.
-   */
+  
   readonly colors: Uint8ClampedArray | null;
 }
 
-/**
- * What a renderer's `handle` ref exposes, so the Studio and export tools
- * can save any ASCII component as .txt, .ans, .svg, .png or video. Every
- * renderer (AsciiShader, AsciiGrid, AsciiImage, ...) fills one.
- */
 export interface AsciiHandle {
-  /**
-   * The latest frame as glyphs and colours, or `null` before the first
-   * draw. Post effects that move or shade pixels (glitch row shifts,
-   * curvature, scanlines, bloom, flicker, vignette, RGB split) are visual
-   * only and never reach the frame; glitch glyph flips do, as they change
-   * the glyph grid itself. `canvas` has the effects, for PNG and video.
-   */
+  
   capture(): AsciiFrame | null;
-  /** The canvas being drawn to, for PNG and video capture. */
+  
   readonly canvas: HTMLCanvasElement | null;
-  /** Ink and paper as CSS colours right now. `paper` is null when transparent. */
+  
   colors(): { ink: string; paper: string | null };
-  /** Cell metrics in use, or `null` before the first layout. */
+  
   metrics(): CellMetrics | null;
 }
 
-/** RGBA bytes for one glyph. */
 export type Rgba8 = readonly [number, number, number, number];
 
-/**
- * A frame you can draw into. Writes outside the grid are ignored, so
- * scenes can draw shapes that run off the edges without clipping maths.
- */
 export class MutableFrame implements AsciiFrame {
   columns: number;
   rows: number;
@@ -84,7 +64,6 @@ export class MutableFrame implements AsciiFrame {
       : null;
   }
 
-  /** Resize, keeping colour on if it was on. Clears the frame. */
   resize(columns: number, rows: number): void {
     const color = this.colors !== null;
     this.columns = Math.max(0, Math.floor(columns));
@@ -95,7 +74,6 @@ export class MutableFrame implements AsciiFrame {
       : null;
   }
 
-  /** Turn per-glyph colour on (allocating it) or off. */
   setColored(color: boolean): void {
     if (color && !this.colors) {
       this.colors = new Uint8ClampedArray(this.columns * this.rows * 4);
@@ -104,13 +82,11 @@ export class MutableFrame implements AsciiFrame {
     }
   }
 
-  /** Every cell back to `glyph` (a space by default) with no colour. */
   clear(glyph = " "): void {
     this.glyphs.fill(glyph);
     this.colors?.fill(0);
   }
 
-  /** The glyph at a cell, or `undefined` outside the grid. */
   get(x: number, y: number): string | undefined {
     if (x < 0 || y < 0 || x >= this.columns || y >= this.rows) {
       return undefined;
@@ -118,7 +94,6 @@ export class MutableFrame implements AsciiFrame {
     return this.glyphs[Math.floor(y) * this.columns + Math.floor(x)];
   }
 
-  /** Set one cell. `rgba` colours it when the frame has colour. */
   put(x: number, y: number, glyph: string, rgba?: Rgba8 | Rgb8): void {
     const cx = Math.floor(x);
     const cy = Math.floor(y);
@@ -133,7 +108,6 @@ export class MutableFrame implements AsciiFrame {
     }
   }
 
-  /** Write text left to right from (x, y), one code point per cell. */
   write(x: number, y: number, text: string, rgba?: Rgba8 | Rgb8): void {
     let column = Math.floor(x);
     for (const glyph of text) {
@@ -142,7 +116,6 @@ export class MutableFrame implements AsciiFrame {
     }
   }
 
-  /** Fill a rectangle of cells with one glyph. */
   fillRect(
     x: number,
     y: number,
@@ -159,7 +132,6 @@ export class MutableFrame implements AsciiFrame {
   }
 }
 
-/** The frame's rows as strings. */
 export const frameLines = (frame: AsciiFrame): string[] => {
   const lines: string[] = [];
   for (let row = 0; row < frame.rows; row += 1) {
@@ -169,7 +141,6 @@ export const frameLines = (frame: AsciiFrame): string[] => {
   return lines;
 };
 
-/** The frame as plain text, one line per row. `trimEnd` drops trailing spaces. */
 export const frameToText = (
   frame: AsciiFrame,
   { trimEnd = false }: { trimEnd?: boolean } = {}
@@ -178,11 +149,6 @@ export const frameToText = (
     .map((line) => (trimEnd ? line.trimEnd() : line))
     .join("\n");
 
-/**
- * Tones on a sample grid: `columns * grid[0]` by `rows * grid[1]` samples,
- * row-major, row 0 at the top. 0 is empty, 1 is full ink. `colors` holds
- * RGBA bytes per sample when the source has colour.
- */
 export interface ToneField {
   readonly width: number;
   readonly height: number;
@@ -190,7 +156,6 @@ export interface ToneField {
   readonly colors: Uint8ClampedArray | null;
 }
 
-/** A blank tone field sized for `columns` by `rows` cells of `charset`. */
 export const createToneField = (
   columns: number,
   rows: number,
@@ -208,11 +173,6 @@ export const createToneField = (
   };
 };
 
-/**
- * Fill a tone field from a function of the sample centre, with `u` and `v`
- * in [0, 1] and `v` 0 at the top. Return a tone, or `[tone, r, g, b]` with
- * bytes for colour.
- */
 export const fillToneField = (
   field: ToneField,
   sample: (
@@ -237,40 +197,30 @@ export const fillToneField = (
   }
 };
 
-/** How `mapTones` turns tones into glyphs and colours. */
 export interface MapOptions {
-  /** Default `"standard"`. */
+  
   charset?: CharsetName | Charset;
-  /** A custom ramp from empty to dense, such as `" .oO@"`. Wins over `charset`. */
+  
   chars?: string;
-  /** Tone grading before glyph choice. */
+  
   grade?: Grade;
-  /** Dense glyphs for dark tones instead of bright ones. Default `false`. */
+  
   invert?: boolean;
-  /** Braille and quadrants: the tone that lights a dot. Default 0.5. */
+  
   threshold?: number;
-  /**
-   * Ramps and the edge set's interior: where each glyph sits on the tone
-   * axis, 0 for the first and 1 for the last, one entry per glyph. Default
-   * evenly spaced, so tone 0.5 picks the middle glyph. `AsciiShader`
-   * spaces glyphs by measured ink coverage instead; pass
-   * `charsetRampPositions(...)` here to pick exactly the glyphs it draws.
-   */
+  
   positions?: ArrayLike<number>;
-  /** Edge set: Sobel magnitude, 0 to 1, that draws a directional glyph. Default 0.22. */
+  
   edgeThreshold?: number;
-  /**
-   * Ordered dithering between glyph levels (and dots), which smooths
-   * gradients drawn with few glyphs. Default `"none"`.
-   */
+  
   dither?: "none" | DitherMatrix;
-  /** Default `"mono"`, which leaves `colors` null. */
+  
   colorMode?: ColorMode;
-  /** `duotone`: a ramp name or stops as `#rrggbb`. Default `"mainframe"`. */
+  
   ramp?: RampName | readonly string[];
-  /** `ansi16`: which 16-colour table. Default `"vga"`. */
+  
   ansi?: Ansi16Name;
-  /** `palette`: paper, then the inks glyphs take by tone, as bytes. */
+  
   palette?: readonly Rgb8[];
 }
 
@@ -287,9 +237,9 @@ const rampStops = (ramp: MapOptions["ramp"]): readonly Rgb8[] => {
 };
 
 interface Sampler {
-  /** The graded (and inverted) tone of one sample. */
+  
   readonly tone: (x: number, y: number) => number;
-  /** The dither threshold at a sample, or 0.5 without dithering. */
+  
   readonly cut: (x: number, y: number) => number;
   readonly dithered: boolean;
 }
@@ -314,11 +264,10 @@ const createSampler = (field: ToneField, options: MapOptions): Sampler => {
 
 interface CellResult {
   readonly glyph: string;
-  /** The cell's mean tone, which colours `duotone` and `palette`. */
+  
   readonly tone: number;
 }
 
-/** RGBA bytes for one cell, written in place without a temporary array. */
 const writeColor = (colors: Uint8ClampedArray, index: number, rgb: Rgb8) => {
   const [r, g, b] = rgb;
   const at = index * 4;
@@ -328,8 +277,6 @@ const writeColor = (colors: Uint8ClampedArray, index: number, rgb: Rgb8) => {
   colors[at + 3] = 255;
 };
 
-// Graded tones for a whole field, reused between calls so animated scenes
-// don't allocate a buffer every frame.
 let gradedScratch = new Float32Array(0);
 
 const gradeField = (field: ToneField, options: MapOptions): Float32Array => {
@@ -349,16 +296,9 @@ const gradeField = (field: ToneField, options: MapOptions): Float32Array => {
   return out;
 };
 
-// Sample bit for each position in a cell, row by row.
 const BRAILLE_BITS_FLAT = BRAILLE_DOT_BITS.flat();
 const QUADRANT_BITS_FLAT = QUADRANT_BITS.flat();
 
-/**
- * Braille and quadrants in one tight pass: each sample above the threshold
- * (or its dither threshold) sets its bit, and the mask indexes the
- * charset's glyph table. Same rule as before, minus a closure call, an
- * object and a string per cell, which dominated CPU scenes in Braille.
- */
 const mapPacked = (
   field: ToneField,
   columns: number,
@@ -396,7 +336,7 @@ const mapPacked = (
               ] ?? 0.5)
             : threshold;
           if (tone > cut) {
-            // Each sample owns one distinct bit, so adding sets it.
+            
             mask += bits[bit] ?? 0;
           }
           bit += 1;
@@ -411,7 +351,6 @@ const mapPacked = (
   }
 };
 
-/** A ramp level, or for the edge set a directional glyph on strong gradients. */
 const rampCell = (
   sampler: Sampler,
   charset: Charset,
@@ -449,8 +388,7 @@ const rampCell = (
   const { glyphs } = charset;
   const cut = sampler.cut(column, row);
   const { positions } = options;
-  // Positions only apply when there is one per glyph; a stale set from
-  // another charset falls back to even spacing rather than misindexing.
+
   if (positions && positions.length === glyphs.length) {
     return { glyph: glyphs[rampLevel(tone, positions, cut)] ?? " ", tone };
   }
@@ -459,7 +397,6 @@ const rampCell = (
   return { glyph: glyphs[level] ?? " ", tone };
 };
 
-/** The colour mapping for one cell, built once per `mapTones` call. */
 const cellColorizer = (
   field: ToneField,
   charset: Charset,
@@ -475,8 +412,7 @@ const cellColorizer = (
     options.palette &&
     options.palette.length > 0
   ) {
-    // The first entry is the paper behind the glyphs; glyphs take the inks
-    // after it, as the GPU renderer does.
+
     const inks =
       options.palette.length > 1 ? options.palette.slice(1) : options.palette;
     return (_column, _row, tone) => sampleRamp(inks, tone);
@@ -487,7 +423,7 @@ const cellColorizer = (
   return (column, row, tone) => {
     let rgb: Rgb8;
     if (colors) {
-      // truecolor and ansi16 read the source colour, averaged over the cell.
+      
       let r = 0;
       let g = 0;
       let b = 0;
@@ -511,23 +447,6 @@ const cellColorizer = (
   };
 };
 
-/**
- * Map a tone field to glyphs. The field must be `columns * grid[0]` by
- * `rows * grid[1]` for the charset's grid. Writes into `into` when given
- * (resizing it if needed) and returns it, so a scene can reuse one frame.
- *
- * Rules, shared with the GPU:
- * - ramps: grade, invert, then level `floor(tone * (n - 1) + t)`, where `t`
- *   is 0.5 or the dither threshold at the cell. With `positions`, the
- *   fractional level is measured between the two glyphs around the tone
- *   instead (`rampLevel`), which is the GPU's rule;
- * - braille and quadrants: each sample lights its dot when its graded tone
- *   is above `threshold` (or the dither threshold at that sample);
- * - edge: a 3x3 Sobel on graded tones; above `edgeThreshold` the cell
- *   draws `- / | \` across the gradient, otherwise the interior ramp;
- * - colour: the cell's colour is the mean of its samples' colours (or
- *   tones, for `duotone` and `palette`), then the mode's mapping.
- */
 export const mapTones = (
   field: ToneField,
   columns: number,

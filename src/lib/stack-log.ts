@@ -3,25 +3,19 @@ import type { Env, Frame, Meta } from "ascii.rest";
 import { PALETTE, roleColor } from "./log-colors";
 import type { LogRole } from "./log-colors";
 
-/**
- * The tech I know, printed like ascii.rest's boot-log: each group is checked
- * in with a `[  OK  ]` status, then the finished log stays on screen.
- * Derived from ascii.rest's boot-log piece (MIT).
- */
 export interface StackLogOptions {
   [key: string]: unknown;
-  /** Seconds between groups being checked in on the first look. */
+  
   pace?: number;
 }
 
 interface Entry {
   label: string;
   text: string;
-  /** A line without a status, continuing the group above. */
+  
   continuation?: boolean;
 }
 
-/** Text and one palette role, so the frame can colour each cell. */
 type Segment = [text: string, role: LogRole];
 
 const ENTRIES: Entry[] = [
@@ -47,7 +41,7 @@ export const meta: Meta<StackLogOptions> = {
   rows: 11,
   fps: 12,
   palette: PALETTE,
-  // Negative still time: show the fully checked-in log for reduced motion.
+  
   still: -1,
   options: { pace: 0.2 },
 };

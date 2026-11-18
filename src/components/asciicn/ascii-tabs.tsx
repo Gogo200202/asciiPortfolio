@@ -19,30 +19,16 @@ import { cssColor, usePrefersReducedMotion } from "@/lib/ascii";
 import type { AsciiColor } from "@/lib/ascii";
 import { cn } from "@/lib/utils";
 
-/*
- * The strip is a grid of glyph cells, as wide as the box-drawing advance
- * (`--tabs-cw`, measured from a probe), not the text font's `ch`: the two
- * often come from different fonts. Frame rows hold only box glyphs, never
- * spaces, and gaps are padding, so nothing drifts off the grid. Tab `i` owns a divider cell at
- * column `x[i]` and its padded label after it, so the next divider sits at
- * `x[i + 1] = x[i] + label + 3`. The active tab is the span between two
- * dividers; it slides as a pair of floats, rounded to whole cells for the
- * folder and to half cells for the underline, whose ends use the half
- * heavy lines `╾` and `╼`.
- */
-
-/** `folder` opens the active tab into a framed panel; `underline` slides a heavy rule along a light one. */
 export type AsciiTabsVariant = "folder" | "underline";
 
 export type AsciiTabsSize = "sm" | "md" | "lg";
 
-/** One tab and its panel. */
 export interface AsciiTab {
-  /** Unique id of the tab, used by `value`. */
+  
   value: string;
-  /** Text on the tab. Plain text, so it sits on the cell grid. */
+  
   label: string;
-  /** What the panel shows while the tab is active. */
+  
   content: ReactNode;
 }
 
@@ -50,23 +36,23 @@ export interface AsciiTabsProps extends Omit<
   ComponentProps<"div">,
   "defaultValue" | "color"
 > {
-  /** The tabs, left to right. */
+  
   tabs: readonly AsciiTab[];
-  /** The active tab, when you control it. */
+  
   value?: string;
-  /** The tab active at first, when the tabs control themselves. Default: the first tab. */
+  
   defaultValue?: string;
-  /** Called with the new tab's `value` when the visitor picks a tab. */
+  
   onValueChange?: (value: string) => void;
-  /** Names the tab list for screen readers. */
+  
   label?: string;
-  /** Default `"folder"`. */
+  
   variant?: AsciiTabsVariant;
-  /** Colour of the active label and the underline: a palette name or any CSS colour. Default `"ink"`. */
+  
   color?: AsciiColor;
-  /** Glyph cell height: `sm` 12px, `md` 16px, `lg` 20px. Default `"md"`. */
+  
   size?: AsciiTabsSize;
-  /** Glyph cell height in CSS pixels. Overrides `size`. */
+  
   cell?: number;
 }
 
@@ -75,24 +61,17 @@ const CELLS = { lg: 20, md: 16, sm: 12 } as const satisfies Record<
   number
 >;
 
-/** Long enough for any width; the overflow is clipped. */
 const RUN = 320;
 const VERTICAL_RUN = "│\n".repeat(RUN / 4);
 const SLIDE_MS = 200;
 
-/**
- * Font size per cell height. Cascadia Mono's box lines are 1.17em tall, so
- * at this size the frame's vertical lines join across rows.
- */
 const GLYPH_EM = 1.17;
 
 const PROBE = "─".repeat(10);
 
-/** The tab's CSS variables: cell height, active ink and the muted frame. */
 type TabsVars = CSSProperties &
   Record<"--tabs-cell" | "--tabs-cw" | "--tabs-ink" | "--tabs-frame", string>;
 
-/** `n` glyph cells as a CSS length. */
 const cells = (n: number) => `calc(var(--tabs-cw) * ${n})`;
 
 interface Span {
@@ -100,7 +79,6 @@ interface Span {
   readonly end: number;
 }
 
-/** The divider column before each tab, plus the one after the last. */
 const dividers = (tabs: readonly AsciiTab[]): number[] => {
   const columns = [0];
   for (const tab of tabs) {
@@ -109,10 +87,6 @@ const dividers = (tabs: readonly AsciiTab[]): number[] => {
   return columns;
 };
 
-/**
- * `target` eased from where the span was last shown, so a new tab slides
- * in. Jumps under reduced motion.
- */
 const useSlide = (target: Span): Span => {
   const reduced = usePrefersReducedMotion();
   const [shown, setShown] = useState(target);
@@ -128,8 +102,7 @@ const useSlide = (target: Span): Span => {
     const began = performance.now();
     let frame = 0;
     const step = (now: number) => {
-      // A frame's timestamp can predate `began`, so clamp below too: a
-      // negative t would ease backwards past the start.
+
       const t = Math.min(1, Math.max(0, (now - began) / SLIDE_MS));
       const eased = 1 - (1 - t) ** 3;
       shownRef.current = {
@@ -147,7 +120,6 @@ const useSlide = (target: Span): Span => {
   return shown;
 };
 
-/** Width of a box glyph, from a run of them; `null` until measured. */
 const useGlyphAdvance = () => {
   const probeRef = useRef<HTMLSpanElement>(null);
   const [advance, setAdvance] = useState<number | null>(null);
@@ -163,7 +135,7 @@ const useGlyphAdvance = () => {
       }
     };
     measure();
-    // A web font that loads late or a zoom change resizes the probe.
+    
     const observer = new ResizeObserver(measure);
     observer.observe(probe);
     return () => observer.disconnect();
@@ -176,10 +148,6 @@ interface Run {
   readonly lit: boolean;
 }
 
-/**
- * The underline: `─` everywhere, `━` under the active span, with `╾` and
- * `╼` where the span ends halfway through a cell.
- */
 const underline = (span: Span, width: number): Run[] => {
   const runs: Run[] = [];
   for (let column = 0; column < width; column += 1) {
@@ -204,10 +172,8 @@ const underline = (span: Span, width: number): Run[] => {
   return runs;
 };
 
-/** One row of frame glyphs. */
 const ROW = "h-[var(--tabs-cell)] overflow-hidden whitespace-pre select-none";
 
-/** Top row of the folder: a lid over the active span. */
 const Lid = ({ span }: { span: Span }) => (
   <div
     aria-hidden="true"
@@ -218,7 +184,6 @@ const Lid = ({ span }: { span: Span }) => (
   </div>
 );
 
-/** The row under the tabs: the panel's top edge, open under the active tab. */
 const FolderBase = ({ span }: { span: Span }) => (
   <div aria-hidden="true" className={cn(ROW, "flex")}>
     <span className="shrink-0">
@@ -234,14 +199,12 @@ const FolderBase = ({ span }: { span: Span }) => (
   </div>
 );
 
-/** The row under the tabs: a light rule with the heavy underline on it. */
 const UnderlineBase = ({ span, width }: { span: Span; width: number }) => (
   <div aria-hidden="true" className={cn(ROW, "flex")}>
     <span className="shrink-0">
       {underline(span, width).map((run, index) => (
         <span
-          // Runs are positional: the nth run of the rule.
-          // oxlint-disable-next-line react/no-array-index-key
+
           key={index}
           className={run.lit ? "text-[var(--tabs-ink)]" : undefined}
         >
@@ -253,7 +216,6 @@ const UnderlineBase = ({ span, width }: { span: Span; width: number }) => (
   </div>
 );
 
-/** The folder panel's sides and bottom, behind its content. */
 const PanelFrame = ({ style }: { style: CSSProperties }) => (
   <div
     aria-hidden="true"
@@ -280,11 +242,6 @@ const NEXT_KEYS: Readonly<
   Home: () => 0,
 };
 
-/**
- * Where the active tab's span is drawn right now. The folder spans the
- * dividers in whole cells; the underline runs under the padded label in
- * half cells. `landed` once the slide has reached the active tab.
- */
 const useTabSpan = (
   tabs: readonly AsciiTab[],
   activeIndex: number,
@@ -308,13 +265,6 @@ const useTabSpan = (
   };
 };
 
-/**
- * Tabs drawn in box-drawing glyphs. `folder` lifts the active tab out of a
- * framed panel like a file folder, its lid sliding to the tab you pick;
- * `underline` slides a heavy rule along a light one in half-cell steps.
- * Real tab buttons with a roving tab stop: arrow keys, Home and End move
- * between tabs, and the panel follows focus.
- */
 export const AsciiTabs = ({
   tabs,
   value,
@@ -373,10 +323,10 @@ export const AsciiTabs = ({
 
   const vars: TabsVars = {
     "--tabs-cell": `${height}px`,
-    // Before measuring: Cascadia Mono's advance, 0.586em, at this font size.
+    
     "--tabs-cw":
       advance === null ? `${(height / GLYPH_EM) * 0.586}px` : `${advance}px`,
-    // Opaque, so the edges where neighbouring glyphs overlap don't double up.
+    
     "--tabs-frame":
       "color-mix(in oklab, var(--ascii-ink) 45%, var(--ascii-paper))",
     "--tabs-ink": cssColor(color),
@@ -437,7 +387,7 @@ export const AsciiTabs = ({
                   tabIndex={selected ? 0 : -1}
                   className={cn(
                     "relative h-[var(--tabs-cell)] shrink-0 cursor-pointer text-center whitespace-pre outline-hidden transition-colors duration-150",
-                    // A taller hit area, over the rows above and below.
+                    
                     "before:absolute before:inset-x-0 before:-top-[var(--tabs-cell)] before:-bottom-[var(--tabs-cell)] before:content-['']",
                     "focus-visible:rounded-[2px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:outline-solid",
                     selected
@@ -481,7 +431,7 @@ export const AsciiTabs = ({
             id={`${baseId}-panel-${index}`}
             aria-labelledby={`${baseId}-tab-${index}`}
             hidden={index !== activeIndex}
-            // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a panel without its own controls needs a tab stop, per the ARIA tabs pattern
+            
             tabIndex={0}
             className="relative min-w-0 rounded-[2px] outline-hidden focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring focus-visible:outline-solid"
           >

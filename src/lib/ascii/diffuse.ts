@@ -1,16 +1,6 @@
 import { getThresholdMap } from "@/lib/ascii/matrices";
 import type { Rgba } from "@/lib/ascii/tokens";
 
-/**
- * Tone reduction for still images before they become glyphs: snap every
- * pixel to a small palette with ordered thresholds or error diffusion
- * (Floyd–Steinberg, Atkinson, Sierra Lite). Spreading the error keeps
- * detail when a photo is mapped to a short glyph ramp or to the 16 ANSI
- * colours. Pure functions over RGBA pixels: the input is never changed and
- * the result is a new `ImageData`, so this runs on the main thread or in a
- * Web Worker (anywhere `ImageData` exists).
- */
-
 export type OrderedMethod = "bayer4" | "bayer8" | "blue-noise";
 export type DiffusionMethod = "floyd-steinberg" | "atkinson" | "sierra-lite";
 export type DitherMethod = OrderedMethod | DiffusionMethod;
@@ -24,17 +14,14 @@ export const DITHER_METHODS = [
   "sierra-lite",
 ] as const satisfies readonly DitherMethod[];
 
-/** An RGB colour, each channel in [0, 1]. Alpha in an `Rgba` is ignored. */
 export type PaletteColor = readonly [number, number, number] | Rgba;
 
-/** At least two colours. Pixels map to the nearest one. */
 export type ImagePalette = readonly [
   PaletteColor,
   PaletteColor,
   ...PaletteColor[],
 ];
 
-/** Anything shaped like `ImageData`: RGBA bytes, row by row. */
 export interface PixelBuffer {
   readonly data: Uint8ClampedArray;
   readonly width: number;
@@ -42,24 +29,19 @@ export interface PixelBuffer {
 }
 
 interface SharedOptions {
-  /** Output colours. Default black and white. */
+  
   palette?: ImagePalette;
-  /**
-   * Brightness cut-off in [0, 1]. Lower values push more pixels towards
-   * the lighter colours. Default 0.5.
-   */
+  
   threshold?: number;
 }
 
-/** Ordered dithering: stable between frames, a visible pattern. */
 export interface OrderedOptions extends SharedOptions {
   method: OrderedMethod;
 }
 
-/** Error diffusion: finer detail on photos and logos. */
 export interface DiffusionOptions extends SharedOptions {
   method: DiffusionMethod;
-  /** Alternate the scan direction each row. Default `true`. */
+  
   serpentine?: boolean;
 }
 
@@ -70,7 +52,6 @@ const BLACK_AND_WHITE: ImagePalette = [
   [1, 1, 1],
 ];
 
-// [dx, dy, weight] for each neighbour that receives part of the error.
 type Kernel = readonly (readonly [number, number, number])[];
 
 const KERNELS = {
@@ -106,7 +87,7 @@ const nearest = (palette: ImagePalette, r: number, g: number, b: number) => {
     const dr = r - color[0];
     const dg = g - color[1];
     const db = b - color[2];
-    // Weighted towards green, as the eye is.
+    
     const distance = 0.3 * dr * dr + 0.59 * dg * dg + 0.11 * db * db;
     if (distance < bestDistance) {
       bestDistance = distance;
@@ -137,7 +118,7 @@ const asciiOrdered = (
   const { data, width, height } = image;
   const out = new Uint8ClampedArray(data.length);
   const map = getThresholdMap(method);
-  // Spread the threshold over one step between palette colours.
+  
   const spread = 1 / (palette.length - 1);
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
@@ -155,7 +136,6 @@ const asciiOrdered = (
   return out;
 };
 
-/** Pass one pixel's rounding error on to its unvisited neighbours. */
 const spreadError = ({
   error,
   height,
@@ -233,11 +213,6 @@ const asciiDiffusion = (
 
 const DEFAULT_OPTIONS: DiffuseOptions = { method: "floyd-steinberg" };
 
-/**
- * Reduce an image to a palette with ordered thresholds or error diffusion.
- * Returns a new `ImageData` the same size; `image` is not modified.
- * Default: Floyd–Steinberg in black and white.
- */
 export const ditherImage = (
   image: PixelBuffer,
   options: DiffuseOptions = DEFAULT_OPTIONS

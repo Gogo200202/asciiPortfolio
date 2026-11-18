@@ -31,7 +31,6 @@ const GLSL_TYPES = { 1: "float", 2: "vec2", 3: "vec3", 4: "vec4" } as const;
 const uniformSize = (value: ShaderUniformValue): UniformSpec["size"] =>
   typeof value === "number" ? 1 : value.length;
 
-/** Declarable uniforms in a stable order; reserved or invalid names are skipped with an error. */
 export const uniformSpecs = (uniforms: AsciiUniforms): UniformSpec[] =>
   Object.keys(uniforms)
     .toSorted()
@@ -53,27 +52,26 @@ export const uniformSpecs = (uniforms: AsciiUniforms): UniformSpec[] =>
       return [{ name, size: uniformSize(value) }];
     });
 
-/** Everything one frame reads. Mutated in place by the caller, never reallocated. */
 export interface FrameInput {
   time: number;
   seed: number;
   uniforms: AsciiUniforms;
-  /** Deprecated `levels`: tones snap to this many steps first; 0 is off. */
+  
   levels: number;
-  /** 0 none, 1 repel, 2 ripple, 3 trail. */
+  
   interaction: number;
   readonly pointer: Float32Array;
   readonly pointerVelocity: Float32Array;
   readonly click: Float32Array;
   readonly audio: Float32Array;
-  /** brightness, contrast, gamma, saturation. */
+  
   readonly grade: Float32Array;
   invert: boolean;
   threshold: number;
   edgeThreshold: number;
   colorMode: number;
   readonly ink: Float32Array;
-  /** Paper as premultiplied RGBA; alpha 0 for a transparent background. */
+  
   readonly paper: Float32Array;
   readonly stops: Float32Array;
   stopCount: number;
@@ -85,7 +83,7 @@ export interface FrameInput {
   glitch: number;
   flicker: number;
   vignette: number;
-  /** Seconds since the last frame, for the trail's decay. */
+  
   delta: number;
   frame: number;
 }
@@ -121,28 +119,27 @@ export const createFrameInput = (): FrameInput => ({
   vignette: 0,
 });
 
-/** The charset layout the cell pass needs. */
 export interface GlyphLayout {
-  /** 0 ramp, 1 braille, 2 quadrants, 3 edge. */
+  
   readonly kind: number;
-  /** Ramp glyphs (or masks) before the edge glyphs. */
+  
   readonly count: number;
   readonly grid: readonly [number, number];
-  /** Calibrated ramp positions, or null for even spacing. */
+  
   readonly positions: Float32Array | null;
 }
 
 export interface CellReadback {
   readonly columns: number;
   readonly rows: number;
-  /** Atlas slot per cell, row-major, row 0 at the top. */
+  
   readonly slots: Uint16Array;
-  /** RGBA per cell, row-major, row 0 at the top. */
+  
   readonly colors: Uint8Array;
 }
 
 export interface AsciiRenderer {
-  /** Compile a field. False (with the error logged) when it doesn't compile. */
+  
   setField(input: {
     field: string;
     colorField: string | undefined;
@@ -329,13 +326,11 @@ interface FieldProgram {
   })[];
 }
 
-// Small deterministic noise for per-frame effects, so nothing allocates.
 const frameNoise = (frame: number, salt: number) => {
   const x = Math.sin(frame * 12.9898 + salt * 78.233) * 43_758.5453;
   return x - Math.floor(x);
 };
 
-/** Build the renderer on a WebGL2 context, or null when the GPU can't run it. */
 export const createAsciiRenderer = (gl: GL): AsciiRenderer | null => {
   const floatTargets = gl.getExtension("EXT_color_buffer_float") !== null;
 
@@ -351,7 +346,6 @@ export const createAsciiRenderer = (gl: GL): AsciiRenderer | null => {
   const blurAt = locate(gl, blurProgram, BLUR_UNIFORMS);
   const trailAt = locate(gl, trailProgram, TRAIL_UNIFORMS);
 
-  // One triangle that covers the viewport, at attribute 0 in every program.
   const vao = gl.createVertexArray();
   gl.bindVertexArray(vao);
   const buffer = gl.createBuffer();
@@ -499,7 +493,7 @@ export const createAsciiRenderer = (gl: GL): AsciiRenderer | null => {
       }
     }
   };
-  // Trail: decay last frame's wake and stamp the pointer.
+  
   const drawTrail = (input: FrameInput) => {
     const previous = trails[trailIndex];
     trailIndex = 1 - trailIndex;
@@ -539,7 +533,7 @@ export const createAsciiRenderer = (gl: GL): AsciiRenderer | null => {
     bindTexture(1, trails[trailIndex] ?? trails[0] ?? palette);
     gl.uniform1i(field.at.ascii_trail, 1);
     gl.uniform1f(field.at.u_paletteSize, paletteSize);
-    // res.y counts sample rows; res.x keeps the box's true aspect ratio.
+    
     gl.uniform2f(
       field.at.u_resolution,
       (samplesY * canvasWidth) / Math.max(1, canvasHeight),
@@ -595,7 +589,6 @@ export const createAsciiRenderer = (gl: GL): AsciiRenderer | null => {
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   };
 
-  // Bloom: blur bright glyphs at cell resolution.
   const drawBloom = () => {
     gl.useProgram(blurProgram);
     gl.uniform2f(blurAt.u_size, columns, rows);
@@ -716,7 +709,7 @@ export const createAsciiRenderer = (gl: GL): AsciiRenderer | null => {
         drawTrail(input);
       }
       drawField(fieldProgram, input, columns * gx, rows * gy);
-      // Glitch frames: a random share of frames, more with a stronger glitch.
+      
       const glitch =
         input.glitch > 0 &&
         frameNoise(Math.floor(input.frame / 3), 1) < input.glitch * 0.3
@@ -745,7 +738,7 @@ export const createAsciiRenderer = (gl: GL): AsciiRenderer | null => {
       gl.bindFramebuffer(gl.READ_FRAMEBUFFER, cellFbo);
       gl.readBuffer(gl.COLOR_ATTACHMENT0);
       gl.readPixels(0, 0, columns, rows, gl.RGBA, gl.UNSIGNED_BYTE, raw);
-      // The texture's row 0 is the bottom row of cells: flip while unpacking.
+      
       for (let y = 0; y < rows; y += 1) {
         const from = (rows - 1 - y) * columns;
         for (let x = 0; x < columns; x += 1) {

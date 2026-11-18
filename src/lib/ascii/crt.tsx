@@ -3,19 +3,6 @@ import type { ComponentProps, CSSProperties } from "react";
 import type { PostFx } from "@/lib/ascii/look";
 import { cn } from "@/lib/utils";
 
-/**
- * A CSS approximation of the GPU renderer's CRT finish, for Canvas2D and
- * DOM renderers: scanlines, phosphor glow, vignette, corner shading for
- * curved glass, flicker and a rolling glitch band. Lay it over the glyphs
- * (the parent must be positioned); it never takes pointer events.
- * Server-safe.
- *
- * Glow blurs whatever is behind the overlay (`backdrop-filter`) and adds
- * it back with `screen`, so every glyph glows in its own colour. It is
- * scaled by `--ascii-glow` per theme. Flicker and glitch stop under
- * reduced motion.
- */
-
 const KEYFRAMES = `@keyframes ascii-crt-flicker{0%,100%{opacity:0}8%{opacity:.6}9%{opacity:.1}31%{opacity:.4}32%{opacity:0}63%{opacity:.8}64%{opacity:.2}}@keyframes ascii-crt-roll{0%{transform:translateY(-10%)}100%{transform:translateY(1100%)}}@media (prefers-reduced-motion:reduce){[data-ascii-crt] *{animation:none!important}}`;
 
 const layer: CSSProperties = { inset: 0, position: "absolute" };
@@ -24,11 +11,10 @@ export interface CrtOverlayProps extends Omit<
   ComponentProps<"div">,
   "children"
 > {
-  /** Effect strengths, each 0 (off) to 1. Unset effects are off. */
+  
   fx: PostFx;
 }
 
-/** CRT effects as stacked CSS layers over a renderer. Renders nothing when every effect is off. */
 export const CrtOverlay = ({
   fx,
   className,

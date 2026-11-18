@@ -31,16 +31,9 @@ import type {
 } from "@/lib/ascii";
 import { cn } from "@/lib/utils";
 
-/**
- * What starts the reveal.
- * - `view`: once, when the image scrolls into view.
- * - `hover`: on hover or focus, and back to glyphs on leave. A tap toggles it.
- * - `manual`: follows the `revealed` prop.
- */
 export const REVEAL_TRIGGERS = ["view", "hover", "manual"] as const;
 export type RevealTrigger = (typeof REVEAL_TRIGGERS)[number];
 
-/** Which way the handover edge travels. */
 export const REVEAL_DIRECTIONS = [
   "down",
   "up",
@@ -53,40 +46,36 @@ export type RevealDirection = (typeof REVEAL_DIRECTIONS)[number];
 
 export interface AsciiRevealProps
   extends AsciiLook, Omit<ComponentProps<"div">, "children"> {
-  /** Image URL. Cross-origin files need CORS headers, or the glyphs can't be sampled. */
+  
   src: string;
-  /** What the image shows, passed to the `<img>`. `""` marks it decorative. */
+  
   alt: string;
-  /** What starts the reveal. Default `"view"`. */
+  
   trigger?: RevealTrigger;
-  /** With `trigger="manual"`: show the photo. Default `false`. */
+  
   revealed?: boolean;
-  /** Which way the handover edge travels. Default `"down"`. */
+  
   direction?: RevealDirection;
-  /** Length of one full sweep in milliseconds. Default 2400. */
+  
   duration?: number;
-  /** Default `"standard"`. */
+  
   charset?: AsciiLook["charset"];
-  /** Default `"mono"`. */
+  
   colorMode?: AsciiLook["colorMode"];
-  /** Colour of the glyphs that scramble at the edge. Default `"orange"`, the amber accent. */
+  
   accent?: AsciiColor;
-  /** Width over height of the box. Default: the image's own ratio once it loads, 4/3 before. */
+  
   ratio?: number;
-  /** Cell height in CSS pixels. Default 9. */
+  
   cell?: number;
-  /** `false` swaps states without a sweep, as reduced motion does. Default `true`. */
+  
   animate?: boolean;
-  /** Passed to the image requests. Default `"anonymous"`. */
+  
   crossOrigin?: ComponentProps<"img">["crossOrigin"];
-  /** Filled with a handle for export of the glyph layer. */
+  
   handle?: RefObject<AsciiHandle | null>;
 }
 
-/**
- * How wide the handover band is, as a share of the sweep. A random
- * dissolve has no single front, so its band runs wider to stay readable.
- */
 const BANDS = {
   down: 0.1,
   left: 0.1,
@@ -96,7 +85,6 @@ const BANDS = {
   up: 0.1,
 } as const satisfies Record<RevealDirection, number>;
 
-// A short beat of glyphs before a `view` reveal starts, so it reads as one.
 const VIEW_HOLD_MS = 450;
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
@@ -106,7 +94,6 @@ const smoothstep = (edge0: number, edge1: number, value: number) => {
   return t * t * (3 - 2 * t);
 };
 
-// Sine in and out: the edge never rushes, even mid-sweep.
 const easeInOut = (t: number) => (1 - Math.cos(Math.PI * clamp01(t))) / 2;
 
 const hash = (x: number, y: number) => {
@@ -114,7 +101,6 @@ const hash = (x: number, y: number) => {
   return value - Math.floor(value);
 };
 
-/** Smooth value noise in one dimension, for a front that bends gently. */
 const wave = (x: number, seed: number) => {
   const cell = Math.floor(x);
   const t = x - cell;
@@ -122,7 +108,6 @@ const wave = (x: number, seed: number) => {
   return hash(cell, seed) * (1 - eased) + hash(cell + 1, seed) * eased;
 };
 
-/** Smooth value noise in two dimensions, so a dissolve comes in patches. */
 const patches = (x: number, y: number) => {
   const cx = Math.floor(x);
   const cy = Math.floor(y);
@@ -143,11 +128,6 @@ const popcount = (value: number) => {
   return bits;
 };
 
-/**
- * How much ink each glyph of a charset carries, 0 to 1. Ramps run from
- * empty to dense by position. Braille and quadrant glyphs are indexed by
- * dot mask, so their ink is the share of dots lit.
- */
 const glyphInk = (charset: Charset): ReadonlyMap<string, number> => {
   const ink = new Map<string, number>();
   const { glyphs, kind } = charset;
@@ -164,11 +144,10 @@ const glyphInk = (charset: Charset): ReadonlyMap<string, number> => {
   return ink;
 };
 
-/** A glyph of about `ink` density, varied by `pick` so the edge flickers. */
 const scrambleGlyph = (charset: Charset, ink: number, pick: number): string => {
   const { glyphs, kind } = charset;
   if (kind === "braille" || kind === "quadrants") {
-    // Light each dot with the cell's ink as its odds.
+    
     const dots = kind === "braille" ? 8 : 4;
     let mask = 0;
     for (let dot = 0; dot < dots; dot += 1) {
@@ -183,11 +162,6 @@ const scrambleGlyph = (charset: Charset, ink: number, pick: number): string => {
   return glyphs[Math.min(top, Math.max(1, level))] ?? " ";
 };
 
-/**
- * When each cell hands over, from 0 (first) to 1 (last). Straight sweeps
- * get a gently bent front with a little grain, so cells lock in one by
- * one instead of in ruled lines.
- */
 const cellOrder = (
   direction: RevealDirection,
   columns: number,
@@ -231,31 +205,24 @@ const cellOrder = (
   }
 };
 
-/** Where every cell is in its handover this frame, shared by the layers. */
 interface SweepState {
-  /** Linear progress of the sweep, 0 (glyphs) to 1 (photo). */
+  
   value: number;
-  /** When `value` last advanced, from `performance.now()`. */
+  
   at: number;
   key: string;
   order: Float32Array;
-  /** Per cell: at or below 0 still glyphs, 0 to 1 handing over, 1 photo. */
+  
   phase: Float32Array;
-  /** Per cell: the ink of the glyph it held, so the edge keeps the picture. */
+  
   ink: Float32Array;
   columns: number;
   rows: number;
-  /** One pixel per cell, scaled up to mask the photo. */
+  
   mask: HTMLCanvasElement | null;
 }
 
-/**
- * An image that resolves out of glyphs. It starts as the picture in
- * ASCII, sampled from the photo, then cells lock in and hand over to the
- * real image along a sweep. Glyphs scramble in the accent colour at the
- * edge; behind it the photo shows, ahead of it the glyphs hold.
- */
-// oxlint-disable-next-line complexity -- each prop default counts as a branch.
+
 export const AsciiReveal = (props: AsciiRevealProps) => {
   const [
     look,
@@ -306,7 +273,6 @@ export const AsciiReveal = (props: AsciiRevealProps) => {
     value: 0,
   });
 
-  // Load the photo for sampling only once the box is near the viewport.
   const near = useInView(rootRef, { rootMargin: "320px" });
   const [armed, setArmed] = useState(false);
   useEffect(() => {
@@ -317,7 +283,6 @@ export const AsciiReveal = (props: AsciiRevealProps) => {
   const image = useLoadedImage(armed ? src : null, crossOrigin);
   const ready = image.status === "ready";
 
-  // `view`: reveal once, when enough of the box is on screen.
   const [seen, setSeen] = useState(false);
   useEffect(() => {
     const root = rootRef.current;
@@ -358,13 +323,13 @@ export const AsciiReveal = (props: AsciiRevealProps) => {
   } else if (trigger === "hover") {
     wanted = hovered;
   } else {
-    // Under reduced motion a `view` reveal shows its final state outright.
+    
     wanted = still || held;
   }
   const target = ready && wanted ? 1 : 0;
 
   const [moving, setMoving] = useState(false);
-  // Where the sweep last came to rest. The <img> shows only at rest on 1.
+  
   const [restingAt, setRestingAt] = useState(0);
   useEffect(() => {
     const sweep = sweepRef.current;
@@ -380,7 +345,6 @@ export const AsciiReveal = (props: AsciiRevealProps) => {
     }
   }, [target, still]);
 
-  /** Step the sweep towards the target. Safe to call twice in a frame. */
   const advance = () => {
     const sweep = sweepRef.current;
     const now = performance.now();
@@ -398,7 +362,6 @@ export const AsciiReveal = (props: AsciiRevealProps) => {
     return sweep;
   };
 
-  /** Draw the photo through a one-pixel-per-cell mask of the handed-over cells. */
   const paintPhoto = (sweep: SweepState, context: MediaDrawContext) => {
     const canvas = photoRef.current;
     const drawable = canvas?.getContext("2d");
@@ -417,7 +380,7 @@ export const AsciiReveal = (props: AsciiRevealProps) => {
     if (sweep.value <= 0) {
       return;
     }
-    // Cover the box, centred, the way the <img> does with object-fit.
+    
     const { source } = image;
     const scale = Math.max(width / source.width, height / source.height);
     const drawWidth = source.width * scale;
@@ -434,7 +397,7 @@ export const AsciiReveal = (props: AsciiRevealProps) => {
     if (sweep.value >= 1) {
       return;
     }
-    // One extra column and row cover the strip past the last whole cell.
+    
     const maskWidth = columns + 1;
     const maskHeight = rows + 1;
     const mask = sweep.mask ?? document.createElement("canvas");
@@ -460,8 +423,7 @@ export const AsciiReveal = (props: AsciiRevealProps) => {
     }
     maskContext.putImageData(pixels, 0, 0);
     drawable.globalCompositeOperation = "destination-in";
-    // A smoothed mask softens the photo's edge by about a cell, so the
-    // handover reads as glyphs dissolving, not as square pixels.
+
     drawable.imageSmoothingEnabled = true;
     drawable.drawImage(
       mask,
@@ -473,7 +435,6 @@ export const AsciiReveal = (props: AsciiRevealProps) => {
     drawable.globalCompositeOperation = "source-over";
   };
 
-  // Glyphs ahead of the edge hold; at and behind it they clear for the photo.
   const finish = (frame: MutableFrame, context: MediaDrawContext) => {
     const sweep = advance();
     const { columns, rows, metrics } = context;
@@ -520,8 +481,7 @@ export const AsciiReveal = (props: AsciiRevealProps) => {
     }
   };
 
-  // The edge: cells mid-handover flicker through glyphs in the accent
-  // colour, about as dense as the glyph they held, thinning as they lock in.
+  
   const drawEdge = ({ frame, columns, rows }: AsciiGridDrawContext) => {
     const sweep = sweepRef.current;
     if (
@@ -532,7 +492,7 @@ export const AsciiReveal = (props: AsciiRevealProps) => {
     ) {
       return;
     }
-    // A new glyph about every 80ms reads as a flicker, not as noise.
+    
     const tick = Math.floor(performance.now() / 80);
     for (let index = 0; index < sweep.phase.length; index += 1) {
       const phase = sweep.phase[index] ?? 0;
@@ -549,7 +509,6 @@ export const AsciiReveal = (props: AsciiRevealProps) => {
     }
   };
 
-  /* Hover and focus -------------------------------------------------------- */
 
   const hover = trigger === "hover";
   const handleEnter = (event: PointerEvent<HTMLDivElement>) => {
@@ -564,7 +523,7 @@ export const AsciiReveal = (props: AsciiRevealProps) => {
       setHovered(false);
     }
   };
-  // Touch has no hover, so a tap toggles the photo.
+  
   const handleDown = (event: PointerEvent<HTMLDivElement>) => {
     onPointerDown?.(event);
     if (hover && event.pointerType !== "mouse") {
@@ -643,7 +602,7 @@ export const AsciiReveal = (props: AsciiRevealProps) => {
         animate={moving}
         className="absolute inset-0"
       />
-      {/* oxlint-disable-next-line nextjs/no-img-element -- the photo must be the exact file the glyphs were sampled from. */}
+      
       <img
         src={src}
         alt={alt}

@@ -2,18 +2,7 @@
 
 import { AsciiShader } from "@/lib/ascii/shader";
 
-/**
- * Slow topographic contours drawn in Braille dots behind the page.
- *
- * Two low-frequency noise layers give the height, and the field lights a
- * dot wherever that height crosses a contour. Two layers keep the lines
- * smooth: contouring high-frequency fbm breaks them into static.
- *
- * The middle of the viewport is held back so the name and the project copy
- * always sit on quieter ground, and a scrim above the canvas softens the
- * few contours that cross the text column.
- */
-const CONTOUR_FIELD = /* glsl */ `
+const CONTOUR_FIELD =  `
 float contourHeight(vec2 p, float t) {
   float h = snoise(p * vec2(1.15, 0.85) + vec2(t * 0.014, -t * 0.009));
   h += 0.34 * snoise(p * vec2(2.35, 1.95) + vec2(-t * 0.021, t * 0.012));
@@ -40,13 +29,10 @@ float field(vec2 uv, vec2 res, float t) {
   float hy = contourHeight(p + vec2(0.0, px), t);
   float lines = contourLine(h, hx, hy, 9.0, 1.4);
 
-  // Hold the lines back behind the centred content; let them breathe at the
-  // edges. Normalise x by half the aspect so phones don't lose the whole field.
   vec2 q = vec2((uv.x - 0.5) * 2.0, (uv.y - 0.48) * 1.35);
   float core = smoothstep(0.16, 0.95, length(q));
   float mask = mix(0.3, 1.0, core);
 
-  // Settle into the page edges instead of stopping on a hard line.
   mask *= smoothstep(0.0, 0.12, uv.x) * smoothstep(1.0, 0.88, uv.x);
   mask *= smoothstep(0.0, 0.1, uv.y) * smoothstep(1.0, 0.86, uv.y);
 

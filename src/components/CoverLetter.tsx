@@ -6,8 +6,6 @@ import Box from "@mui/material/Box";
 
 import { usePrefersReducedMotion } from "@/lib/ascii";
 
-// The letter, broken where the two thoughts break. Typed one character at a
-// time, fast, when the section is first looked at.
 const LETTER =
   "Entry-level full-stack web developer with a strong technical foundation and a proven ability to rapidly onboard into complex engineering pipelines.\nHighly adaptable and ready to master any new technologies, workflows, or frameworks required to ensure project success.";
 
@@ -27,13 +25,11 @@ function CoverLetter() {
       ([entry]) => {
         if (entry?.isIntersecting) {
           setStarted(true);
-          // Disconnect on first sight: even scrolling away and back cannot
-          // replay the animation.
+
           observer.disconnect();
         }
       },
-      // Watch the letter panel, not the full-screen section, and wait until
-      // half of it is actually on screen before typing a single character.
+
       { threshold: 0.5 }
     );
     observer.observe(ref.current);
