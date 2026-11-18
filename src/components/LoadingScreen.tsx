@@ -1,20 +1,9 @@
-import { useEffect, useRef } from "react";
 import Box from "@mui/material/Box";
-import { play } from "ascii-magic-art/runtime/player.js";
-import * as piece from "ascii-magic-art/pieces/boot-sequence.js";
+import { Ascii } from "ascii.rest/react";
+
+import * as bootLog from "@/lib/boot-log";
 
 function LoadingScreen() {
-  const ref = useRef(null);
-
-  useEffect(
-    () =>
-      play(ref.current, piece, {
-        look: { look: "squares", gamma: 1.15 },
-        speed: 8,
-      }),
-    [],
-  );
-
   return (
     <Box
       className="dark"
@@ -26,17 +15,18 @@ function LoadingScreen() {
         justifyContent: "center",
         bgcolor: "#000000",
         zIndex: 50,
-        "& canvas": {
-          width: "60% !important",
-          height: "auto !important",
+        "& pre": {
+          m: 0,
+          color: "#ffffff",
+          fontFamily: "var(--font-mono)",
+          fontSize: "clamp(8px, 1.5vw, 21px)",
+          lineHeight: 1.1,
         },
       }}
     >
-      <Box
-        component="pre"
-        ref={ref}
-        aria-hidden="true"
-        sx={{ m: 0, fontSize: "2vw" }}
+      <Ascii
+        piece={bootLog}
+        label="My portfolio booting up: a self test, then work, education, projects and skills loading."
       />
     </Box>
   );

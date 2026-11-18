@@ -4,7 +4,7 @@ import Contact from "./components/Contact.jsx";
 import LoadingScreen from "./components/LoadingScreen.jsx";
 import Projects from "./components/Projects.jsx";
 
-const LOAD_TIME = 1000;
+const LOAD_TIME = 2000;
 
 const projects = [
   {
